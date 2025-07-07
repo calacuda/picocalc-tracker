@@ -7,7 +7,9 @@ use bevy::prelude::*;
 use embedded_alloc::LlffHeap as Heap;
 use hal::entry;
 use nalgebra::{ComplexField, Point3, Vector3};
-use picocalc_bevy::{PicoCalcDefaultPlugins, hal};
+use picocalc_bevy::{DoubleBufferRes, Engine3d, PicoCalcDefaultPlugins, PlayerLocation, hal};
+
+use crate::{auto_transition::AutoTransition, dungeon_gen::DungeonGen};
 
 // Tell the Boot ROM about our application
 #[unsafe(link_section = ".start_block")]
@@ -47,22 +49,11 @@ pub enum InGameState {
 //     SprinklePreFab,
 // }
 
-fn to_in_game(mut game_state: ResMut<NextState<MainGameState>>) {
-    game_state.set(MainGameState::InGame)
-}
-
-fn to_expanding(
-    mut in_game_state: ResMut<NextState<InGameState>>,
-    // mut level_gen_state: ResMut<NextState<LevelGenState>>,
-) {
-    in_game_state.set(InGameState::LevelGen);
-    // level_gen_state.set(LevelGenState::Expanding);
-}
-
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 const HEAP_SIZE: usize = 128 * 1024;
 
+mod auto_transition;
 mod dungeon_gen;
 
 #[entry]
@@ -74,15 +65,17 @@ fn main() -> ! {
 
     App::new()
         .add_plugins(PicoCalcDefaultPlugins)
+        .add_plugins(DungeonGen)
+        .add_plugins(AutoTransition)
         .insert_resource(DoubleBufferRes::new(PlayerLocation {
             pos,
             looking_at,
             ..default()
         }))
         .insert_resource(Engine3d::new(320, 320))
-        .add_systems(Startup, (clear_display, setup))
-        .add_systems(Update, to_in_game.run_if(in_state(MainGameState::StartUp)))
-        .add_systems(Update, to_expanding.run_if(in_state(MainGameState::InGame)))
+        // .add_systems(Startup, (setup))
+        // .add_systems(Update, to_in_game.run_if(in_state(MainGameState::StartUp)))
+        // .add_systems(Update, to_expanding.run_if(in_state(MainGameState::InGame)))
         .run();
 
     loop {}

@@ -1,8 +1,6 @@
 use crate::InGameState;
-use bevy::{
-    prelude::*,
-    tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future},
-};
+use bevy::prelude::*;
+use defmt::*;
 use grid_maker::GridMaker;
 use size_mod::mk_room_sizes;
 
@@ -13,10 +11,10 @@ pub const MAX_ROOMS: usize = 20;
 pub const MIN_ROOMS: usize = 12;
 
 #[derive(Component)]
-struct GenLevelTask(pub usize, pub Task<Vec<(isize, isize)>>);
+pub struct GenLevelTask(pub usize, pub GridMaker);
 
 #[derive(Component)]
-struct Level;
+pub struct Level;
 
 pub struct DungeonGen;
 
@@ -31,10 +29,12 @@ impl Plugin for DungeonGen {
 }
 
 fn start_level_gen(mut cmds: Commands, levels: Query<&Level>) {
-    let thread_pool = AsyncComputeTaskPool::get();
+    // let thread_pool = AsyncComputeTaskPool::get();
 
     let entity = cmds.spawn_empty().id();
-    let task = thread_pool.spawn(GridMaker::new(MIN_ROOMS, MAX_ROOMS));
+    // set seed to the analog read of an analog pin
+    let seed = 123456789;
+    let task = GridMaker::new(MIN_ROOMS, MAX_ROOMS, seed);
 
     info!("Starting level generation");
 
@@ -47,14 +47,14 @@ fn wait_for_level(mut cmds: Commands, mut transform_tasks: Query<(&mut GenLevelT
     // info!("wait_for_level 1");
     for mut task in &mut transform_tasks {
         // info!("wait_for_level 2");
-        if let Some(room_locs) = block_on(future::poll_once(&mut task.0.1)) {
+        if let Some(room_locs) = task.0.1.step() {
             // append the returned command queue to have it execute later
             // cmds.append(&mut commands_queue.lock().unwrap());
 
             info!("despawning rooms generation task");
-            cmds.entity(task.1).despawn_recursive();
+            cmds.entity(task.1).despawn();
             info!("rooms generated");
-            let mut rooms = mk_room_sizes(room_locs);
+            let mut rooms = mk_room_sizes(room_locs, &mut task.0.1.rng);
             info!("rooms sized");
             let max_w = rooms
                 .iter()
@@ -93,16 +93,6 @@ fn wait_for_level(mut cmds: Commands, mut transform_tasks: Query<(&mut GenLevelT
             // TODO: Calculate an X/Y position of the rooms
             // TODO: draw a straight line from the middle of one to the middle of the next.
             for room_measurements in rooms {}
-
-            // let thread_pool = AsyncComputeTaskPool::get();
-            //
-            // let entity = cmds.spawn_empty().id();
-            // let task = thread_pool.spawn(SizeModder::new(rooms));
-            //
-            // info!("modifying the size of the rooms");
-            //
-            // // Spawn new entity and add our new task as a component
-            // cmds.entity(entity).insert(task);
         } else {
             info!("processing");
         }

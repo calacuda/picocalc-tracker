@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rand::Rng;
+use rand::{Rng, rngs::SmallRng};
 
 #[derive(Component, Debug)]
 pub struct RoomSize {
@@ -9,8 +9,8 @@ pub struct RoomSize {
     pub h: f32,
 }
 
-pub fn mk_room_sizes(value: Vec<(isize, isize)>) -> Vec<RoomSize> {
-    let mut rng = rand::rng();
+pub fn mk_room_sizes(value: Vec<(isize, isize)>, rng: &mut SmallRng) -> Vec<RoomSize> {
+    // let mut rng = rand::rng();
 
     value
         .into_iter()
