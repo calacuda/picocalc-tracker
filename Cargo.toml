@@ -22,13 +22,13 @@ embedded-hal = { version = "1.0.0" }
 embedded-alloc = "0.6.0"
 embedded-graphics = { version = "0.8", features = ["defmt"] }
 portable-atomic = { version = "1.9.0", features = ["critical-section"] }
-bevy = { version = "0.16", default-features = false, features = [ "critical-section", "default_no_std" ] }
+# bevy = { version = "0.16", default-features = false, features = [ "critical-section", "default_no_std" ] }
 defmt-rtt = "1.0.0"
 tinytga = "0.5.0"
 nalgebra = {version = "0.32.3", default-features = false, features = [ "libm" ] }
 embedded-sdmmc = "0.9.0"
 embedded-hal-bus = { version = "0.3.0", features = ["portable-atomic", "alloc"] }
-picocalc-bevy = { git = "https://github.com/calacuda/picocalc-bevy-test", version = "0.1.0", package = "picocalc-bevy-test" }
+# picocalc-bevy = { git = "https://github.com/calacuda/picocalc-bevy-test", version = "0.1.0", package = "picocalc-bevy-test" }
 rand = { version = "0.9.1", default-features = false, features = ["alloc", "nightly", "small_rng"] }
 # dlopen = "0.1"
 
