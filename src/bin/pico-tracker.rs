@@ -6,33 +6,14 @@ extern crate alloc;
 use bevy::prelude::*;
 use embedded_alloc::LlffHeap as Heap;
 use hal::entry;
-use picocalc_bevy::PicoCalcDefaultPlugins;
+// use picocalc_bevy::PicoCalcDefaultPlugins;
 pub use picocalc_bevy::hal;
+use picocalc_tracker::{base_plugin::BasePlugin, CmdPallet, Track, TrackID};
 
 // Tell the Boot ROM about our application
 #[unsafe(link_section = ".start_block")]
 #[used]
 pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
-
-pub mod base_plugin;
-
-#[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
-pub enum MainGameState {
-    #[default]
-    StartUp,
-    StartScreen,
-    SettingsScreen,
-    InGame,
-}
-
-#[derive(Clone, Copy, Default, Debug, SubStates, PartialEq, Eq, Hash)]
-#[source(MainGameState = MainGameState::InGame)]
-pub enum InGameState {
-    #[default]
-    NotInGame,
-    Normal,
-    LevelGen,
-}
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
@@ -42,30 +23,25 @@ const HEAP_SIZE: usize = 128 * 1024;
 fn main() -> ! {
     init_heap();
 
-    // let pos = Point3::new(0.0, 2.0, 0.0);
-    // let looking_at = pos + Vector3::new(0.0_f32.cos(), 0.0_f32.sin(), 0.0_f32.sin());
-
     App::new()
-        .add_plugins(base_plugin::BasePlugin)
-        // .insert_resource(DoubleBufferRes::new(PlayerLocation {
-        //     pos,
-        //     looking_at,
-        //     ..default()
-        // }))
-        // .insert_resource(Engine3d::new(320, 320))
-        // .add_systems(Startup, (setup))
-        // .add_systems(Update, to_in_game.run_if(in_state(MainGameState::StartUp)))
-        // .add_systems(Update, to_expanding.run_if(in_state(MainGameState::InGame)))
+        .add_plugins(BasePlugin)
+        .insert_resource(CmdPallet(false))
+        .add_systems(Startup, setup)
         .run();
 
     loop {}
 }
 
 fn setup(mut cmds: Commands) {
-    cmds.spawn(TextComponent {
-        text: "Frames Rendered:".into(),
-        point: Point::new(10, 10),
-    });
+    // cmds.spawn(TextComponent {
+    //     text: "Frames Rendered:".into(),
+    //     point: Point::new(10, 10),
+    // });
+    
+    cmds.spawn((TrackID(0), Track::default()));
+    cmds.spawn((TrackID(1), Track::default()));
+    cmds.spawn((TrackID(2), Track::default()));
+    cmds.spawn((TrackID(3), Track::default()));
 }
 
 #[allow(static_mut_refs)]
