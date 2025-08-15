@@ -6,15 +6,15 @@ extern crate alloc;
 use bevy::prelude::*;
 use embedded_alloc::LlffHeap as Heap;
 use hal::entry;
-use nalgebra::{ComplexField, Point3, Vector3};
-use picocalc_bevy::{DoubleBufferRes, Engine3d, PicoCalcDefaultPlugins, PlayerLocation, hal};
-
-use crate::{auto_transition::AutoTransition, dungeon_gen::DungeonGen};
+use picocalc_bevy::PicoCalcDefaultPlugins;
+pub use picocalc_bevy::hal;
 
 // Tell the Boot ROM about our application
 #[unsafe(link_section = ".start_block")]
 #[used]
 pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
+
+pub mod base_plugin;
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
 pub enum MainGameState {
@@ -34,51 +34,38 @@ pub enum InGameState {
     LevelGen,
 }
 
-// #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
-// // #[source(InGameState = InGameState::LevelGen)]
-// pub enum LevelGenState {
-//     #[default]
-//     NotGen,
-//     /// randommly expanding left, right, up, or down.
-//     Expanding,
-//     /// makes some rooms bigger or smaller, or funky shapes
-//     ModingRoomGeom,
-//     /// move the rooms closser, and waits for them to lock in position.
-//     WaitingForLock,
-//     /// distribute loot chests, monster spawns, and other prefabricated structures.
-//     SprinklePreFab,
-// }
-
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 const HEAP_SIZE: usize = 128 * 1024;
-
-mod auto_transition;
-mod dungeon_gen;
 
 #[entry]
 fn main() -> ! {
     init_heap();
 
-    let pos = Point3::new(0.0, 2.0, 0.0);
-    let looking_at = pos + Vector3::new(0.0_f32.cos(), 0.0_f32.sin(), 0.0_f32.sin());
+    // let pos = Point3::new(0.0, 2.0, 0.0);
+    // let looking_at = pos + Vector3::new(0.0_f32.cos(), 0.0_f32.sin(), 0.0_f32.sin());
 
     App::new()
-        .add_plugins(PicoCalcDefaultPlugins)
-        .add_plugins(DungeonGen)
-        .add_plugins(AutoTransition)
-        .insert_resource(DoubleBufferRes::new(PlayerLocation {
-            pos,
-            looking_at,
-            ..default()
-        }))
-        .insert_resource(Engine3d::new(320, 320))
+        .add_plugins(base_plugin::BasePlugin)
+        // .insert_resource(DoubleBufferRes::new(PlayerLocation {
+        //     pos,
+        //     looking_at,
+        //     ..default()
+        // }))
+        // .insert_resource(Engine3d::new(320, 320))
         // .add_systems(Startup, (setup))
         // .add_systems(Update, to_in_game.run_if(in_state(MainGameState::StartUp)))
         // .add_systems(Update, to_expanding.run_if(in_state(MainGameState::InGame)))
         .run();
 
     loop {}
+}
+
+fn setup(mut cmds: Commands) {
+    cmds.spawn(TextComponent {
+        text: "Frames Rendered:".into(),
+        point: Point::new(10, 10),
+    });
 }
 
 #[allow(static_mut_refs)]
@@ -94,7 +81,7 @@ fn init_heap() {
 pub static PICOTOOL_ENTRIES: [hal::binary_info::EntryAddr; 5] = [
     hal::binary_info::rp_cargo_bin_name!(),
     hal::binary_info::rp_cargo_version!(),
-    hal::binary_info::rp_program_description!(c"Bevy test-3"),
+    hal::binary_info::rp_program_description!(c"PicoCalc-Tracker"),
     hal::binary_info::rp_cargo_homepage_url!(),
     hal::binary_info::rp_program_build_attribute!(),
 ];
