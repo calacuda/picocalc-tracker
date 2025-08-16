@@ -35,7 +35,7 @@ run:
 _new-tmux-dev-session SESSION:
   tmux new -ds "{{SESSION}}" -n "README"
   tmux send-keys -t "{{SESSION}}":README 'nv ./README.md "+set wrap"' ENTER
-  @just _new-window "{{SESSION}}" "Edit" "nv src/{bin/pico-tracker.rs,**/*.rs}"
+  @just _new-window "{{SESSION}}" "Edit" "nv src/{bin/pico-tracker.rs,lib.rs,**/*.rs}"
   @just _new-window "{{SESSION}}" "Run" "cargo check"
   @just _new-window "{{SESSION}}" "Git" "git status"
   @just _new-window "{{SESSION}}" "Misc" ""
