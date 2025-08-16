@@ -8,7 +8,7 @@ use embedded_alloc::LlffHeap as Heap;
 use hal::entry;
 // use picocalc_bevy::PicoCalcDefaultPlugins;
 pub use picocalc_bevy::hal;
-use picocalc_tracker::{base_plugin::BasePlugin, CmdPallet, Track, TrackID};
+use picocalc_tracker::{CmdPallet, FirstViewTrack, Track, TrackID, base_plugin::BasePlugin};
 
 // Tell the Boot ROM about our application
 #[unsafe(link_section = ".start_block")]
@@ -26,6 +26,7 @@ fn main() -> ! {
     App::new()
         .add_plugins(BasePlugin)
         .insert_resource(CmdPallet(false))
+        .init_resource::<FirstViewTrack>()
         .add_systems(Startup, setup)
         .run();
 
@@ -37,7 +38,7 @@ fn setup(mut cmds: Commands) {
     //     text: "Frames Rendered:".into(),
     //     point: Point::new(10, 10),
     // });
-    
+
     cmds.spawn((TrackID(0), Track::default()));
     cmds.spawn((TrackID(1), Track::default()));
     cmds.spawn((TrackID(2), Track::default()));

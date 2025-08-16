@@ -32,6 +32,8 @@ picocalc-bevy = { git = "https://github.com/calacuda/picocalc-bevy-test", versio
 rand = { version = "0.9.1", default-features = false, features = ["alloc", "nightly", "small_rng"] }
 usbd-serial = "0.2.2"
 usb-device = "0.3.2"
+strum = { version = "0.27.2", default-features = false, features = ["strum_macros"] }
+strum_macros = { version = "0.27.2", default-features = false }
 # dlopen = "0.1"
 
 [dependencies.embedded-gfx]
