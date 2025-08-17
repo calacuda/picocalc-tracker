@@ -33,7 +33,14 @@ pub enum FromTracker {
     /// instructs the host to send messages that match this message.
     ListenFor { message: String },
     /// connects a channel to a midi dev
-    Connect { channel: u8, dev: String },
+    Connect {
+        /// output channel of tracker
+        channel: u8,
+        /// device that the midi commands should be sent to
+        dev: String,
+        /// the input channel on the dev that the midi should be sent to.
+        dev_channel: u8,
+    },
 }
 
 // Devs(dev_names:["foo","bar"])

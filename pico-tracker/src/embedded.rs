@@ -1,6 +1,6 @@
 // use super::hal;
 use bevy::prelude::*;
-use embedded_graphics::prelude::Point;
+use embedded_graphics::{pixelcolor::Rgb565, prelude::Point};
 use picocalc_bevy::Visible;
 
 #[derive(Component, Default)]
@@ -13,6 +13,8 @@ pub struct TextComponent {
     pub text: String,
     pub old: Option<String>,
     pub point: Point,
+    pub bg_color: Option<Rgb565>,
+    pub color: Option<Rgb565>,
 }
 
 impl TextComponent {

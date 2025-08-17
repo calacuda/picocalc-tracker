@@ -30,6 +30,8 @@ pub const SCREEN_H: usize = 320;
 pub const N_STEPS: usize = 32;
 pub const CHAR_W: usize = 53;
 pub const CHAR_H: usize = 26;
+pub const Y_OFFSET: i32 = 8;
+pub const COL_W: usize = 18;
 
 // // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // // this prevents the panic message being printed *twice* when `defmt::panic` is invoked
@@ -182,6 +184,14 @@ pub struct TrackID(pub usize);
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct FirstViewTrack(pub usize);
+
+pub fn row_from_line(row_i: usize) -> i32 {
+    Y_OFFSET + (12 * row_i as i32)
+}
+
+pub fn x_from_col(col_i: usize) -> i32 {
+    6 * col_i as i32
+}
 
 // #[cfg(all(test, target_arch = "x86_64"))]
 // #[macro_use]
