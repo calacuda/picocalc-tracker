@@ -50,5 +50,6 @@ target = "thumbv8m.main-none-eabihf"
 
 [alias]
 rb = "run --bin"
+rr = "run --release"
 rrb = "run --release --bin"
 bbr = "build --release --bin"

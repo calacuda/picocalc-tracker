@@ -181,7 +181,7 @@ impl Plugin for BasePlugin {
             // serial.write(b"starting bevy\n").unwrap();
 
             // Create a MIDI class with 1 input and 1 output jack.
-            let mut midi = UsbMidiClass::new(&usb_bus, 1, 5).unwrap();
+            let mut midi = UsbMidiClass::new(&usb_bus, 0, 5).unwrap();
 
             let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x5e4))
                 .device_class(0)
