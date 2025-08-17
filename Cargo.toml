@@ -1,7 +1,13 @@
 [package]
-name = "picocalc-tracker"
+name = "picocalc-tracker-lib"
 version = "0.1.0"
 edition = "2024"
+
+# [[bin]]
+# name = "pico-tracker"
+# path = "src/bin/pico-tracker.rs"
+# test = false
+# benvh = false
 
 [dependencies]
 cortex-m = "0.7"

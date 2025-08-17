@@ -31,6 +31,8 @@ run:
 #   tmux new-w -t pico-dc -n "{{NAME}}"
 #   tmux send-keys -t pico-dc:"{{NAME}}" "{{CMD}}" ENTER
 
+test:
+  cargo test --target x86_64-unknown-linux-gnu --lib
 
 _new-tmux-dev-session SESSION:
   tmux new -ds "{{SESSION}}" -n "README"

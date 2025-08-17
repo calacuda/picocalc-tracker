@@ -1,17 +1,19 @@
 #![no_std]
-#![no_main]
 
 extern crate alloc;
 
-use core::fmt::Display;
-
 use crate::helpers::less_then::UsizeLessThan;
 use bevy::prelude::*;
+use core::fmt::Display;
 use strum_macros::{Display, EnumString};
 
+#[cfg(not(all(test, target_arch = "x86_64")))]
 pub use picocalc_bevy::hal;
 
+#[cfg(not(all(test, target_arch = "x86_64")))]
 pub mod base_plugin;
+#[cfg(not(all(test, target_arch = "x86_64")))]
+pub mod embedded;
 pub mod helpers;
 
 pub type MidiNote = u8;
@@ -19,6 +21,8 @@ pub type MidiNote = u8;
 pub const SCREEN_W: usize = 320;
 pub const SCREEN_H: usize = 320;
 pub const N_STEPS: usize = 32;
+pub const CHAR_W: usize = 53;
+pub const CHAR_H: usize = 26;
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
 pub enum MainState {
@@ -85,7 +89,7 @@ where
         /// two 64th notes.
         times: usize,
     },
-    // NOTE: maybe remove
+    // NOTE: maybe remove Swing
     #[strum(to_string = "Swng")]
     Swing {
         /// the amount of swing to put on the note
@@ -123,6 +127,8 @@ pub enum Sf2Cmd {
     Atk(usize),
     #[strum(to_string = "Dcy-")]
     Dcy(usize),
+    #[strum(to_string = "Dcy2")]
+    Dcy2(usize),
     #[strum(to_string = "Sus-")]
     Sus(usize),
     #[strum(to_string = "Rel-")]
@@ -130,12 +136,6 @@ pub enum Sf2Cmd {
     #[strum(to_string = "Vol-")]
     Volume(f32),
 }
-
-// impl Display for Sf2Cmd {
-//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-//         write!(f, self.to)
-//     }
-// }
 
 impl Default for Sf2Cmd {
     fn default() -> Self {
@@ -148,3 +148,27 @@ pub struct TrackID(pub usize);
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct FirstViewTrack(pub usize);
+
+#[cfg(all(test, target_arch = "x86_64"))]
+#[macro_use]
+mod test {
+    extern crate std;
+    use crate::*;
+
+    #[test]
+    fn tracker_cmd_display() {
+        assert_eq!(
+            TrackerCmd::<Sf2Cmd>::None.to_string(),
+            "----".to_string(),
+            "{} != None",
+            TrackerCmd::<Sf2Cmd>::None.to_string()
+        );
+
+        assert_eq!(
+            TrackerCmd::<Sf2Cmd>::Custom(Sf2Cmd::Volume(0.5)).to_string(),
+            "Vol-".to_string(),
+            "{} != None",
+            TrackerCmd::<Sf2Cmd>::None.to_string()
+        )
+    }
+}

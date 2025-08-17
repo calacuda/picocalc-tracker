@@ -1,0 +1,45 @@
+// use super::hal;
+use bevy::prelude::*;
+use embedded_graphics::prelude::Point;
+use picocalc_bevy::Visible;
+
+#[derive(Component, Default)]
+#[require(Visible)]
+pub struct Renderable;
+
+#[derive(Component)]
+#[require(Renderable)]
+pub struct TextComponent {
+    pub text: String,
+    pub point: Point,
+}
+
+impl TextComponent {
+    pub fn set_text(&mut self, text: &str) {
+        self.text = text.into();
+    }
+}
+
+#[derive(Component)]
+#[require(Renderable)]
+pub struct Shape {
+    // pub vertices: Vec<[f32; 3]>,
+    // pub lines: Vec<[usize; 2]>,
+    // pub faces: Vec<[usize; 3]>,
+    // pub render_mode: RenderMode,
+    // pub scale: f32,
+    // pub color: Rgb565,
+}
+
+impl Default for Shape {
+    fn default() -> Self {
+        Self {
+            // vertices: Vec::new(),
+            // lines: Vec::new(),
+            // faces: Vec::new(),
+            // render_mode: RenderMode::Lines,
+            // scale: 1.0,
+            // color: Rgb565::GREEN,
+        }
+    }
+}

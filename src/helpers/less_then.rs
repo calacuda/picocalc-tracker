@@ -1,9 +1,8 @@
-// use crate::helpers::QuacksLikeANumber;
 use bevy::prelude::*;
 
-// TODO: Make a macro to build a "LessThan" type for a given numeric type
+// TODO: Make a macro to build a "LessThan" type for any given numeric type
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deref, DerefMut)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deref)]
 pub struct UsizeLessThan<const LT: usize>(usize);
 
 impl<const LT: usize> TryFrom<usize> for UsizeLessThan<LT> {

@@ -32,6 +32,7 @@ rustflags = [
 #
 # Load an elf, skipping unchanged flash sectors, verify it, and execute it
 runner = "picotool load -u -v -x -t elf"
+# runner = "probe-rs run --chip RP2350"
 
 
 [build]
@@ -43,6 +44,9 @@ runner = "picotool load -u -v -x -t elf"
 # target = "thumbv7em-none-eabi"   # Cortex-M4 and Cortex-M7 (no FPU)
 # target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
 target = "thumbv8m.main-none-eabihf"
+
+# [test]
+# target = "x86_64-unknown-linux-gnu"
 
 [alias]
 rb = "run --bin"
