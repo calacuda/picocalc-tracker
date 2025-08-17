@@ -22,6 +22,10 @@ use usb_device::{
     bus::UsbBusAllocator,
     device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid},
 };
+use usbd_midi::{
+    CableNumber, UsbMidiClass,
+    message::{Channel, Message, Note, Velocity},
+};
 use usbd_serial::SerialPort;
 
 pub struct BasePlugin;
@@ -163,21 +167,35 @@ impl Plugin for BasePlugin {
                 &mut pac.RESETS,
             ));
             let mut serial = SerialPort::new(&usb_bus);
+            //
+            // let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
+            //     .strings(&[StringDescriptors::default()
+            //         .manufacturer("calacuda")
+            //         .product("Ferris")
+            //         .serial_number("TEST")])
+            //     .unwrap()
+            //     .device_class(2) // 2 for the CDC, from: https://www.usb.org/defined-class-codes
+            //     .build();
+            // let _ = usb_dev.poll(&mut [&mut serial]);
+            //
+            // serial.write(b"starting bevy\n").unwrap();
 
-            let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
+            // Create a MIDI class with 1 input and 1 output jack.
+            let mut midi = UsbMidiClass::new(&usb_bus, 1, 5).unwrap();
+
+            let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x5e4))
+                .device_class(0)
+                .device_sub_class(0)
                 .strings(&[StringDescriptors::default()
                     .manufacturer("calacuda")
-                    .product("Ferris")
-                    .serial_number("TEST")])
+                    .product("MidiOxide")
+                    .serial_number("12345678")])
                 .unwrap()
-                .device_class(2) // 2 for the CDC, from: https://www.usb.org/defined-class-codes
                 .build();
-            let _ = usb_dev.poll(&mut [&mut serial]);
-
-            serial.write(b"starting bevy\n").unwrap();
 
             loop {
-                let _ = usb_dev.poll(&mut [&mut serial]);
+                // let _ = usb_dev.poll(&mut [&mut serial]);
+                let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
 
                 app.update();
 
@@ -193,13 +211,37 @@ impl Plugin for BasePlugin {
                     }
                 }
 
+                // {
+                //     let world = app.world_mut();
+                //     if let Some(ref mut events) = world.get_resource_mut::<Events<MidiOutEnv>>() {
+                //         for event in events.iter_current_update_events() {
+                //             // let _ = serial.write(&[0]);
+                //             // let _ = serial.write(&event.msg.clone().into_bytes());
+                //             // let _ = serial.write(&['\n' as u8, '\r' as u8]);
+                //         }
+                //
+                //         events.update();
+                //     }
+                // }
+
                 {
                     let world = app.world_mut();
-                    if let Some(ref mut events) = world.get_resource_mut::<Events<MidiOutEnv>>() {
+                    if let Some(ref mut events) = world.get_resource_mut::<Events<MidiEnv>>() {
                         for event in events.iter_current_update_events() {
-                            let _ = serial.write(&[0]);
-                            let _ = serial.write(&event.msg.clone().into_bytes());
-                            let _ = serial.write(&['\n' as u8, '\r' as u8]);
+                            let packet = match *event {
+                                MidiEnv::On { note, vel: _ } => Message::NoteOn(
+                                    Channel::Channel1,
+                                    Note::try_from(note).unwrap(),
+                                    Velocity::try_from(120).unwrap(),
+                                ),
+                                MidiEnv::Off { note } => Message::NoteOff(
+                                    Channel::Channel1,
+                                    Note::try_from(note).unwrap(),
+                                    Velocity::try_from(120).unwrap(),
+                                ),
+                            };
+
+                            let _ = midi.send_packet(packet.into_packet(CableNumber::Cable0));
                         }
 
                         events.update();
@@ -212,6 +254,8 @@ impl Plugin for BasePlugin {
             }
         })
         .add_event::<LoggingEnv>()
+        .add_event::<MidiOutEnv>()
+        .add_event::<MidiEnv>()
         .insert_non_send_resource(Keeb {
             i2c,
             adr: keeb_addr,
@@ -237,4 +281,10 @@ impl Plugin for BasePlugin {
 #[derive(Event, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct MidiOutEnv {
     pub msg: String,
+}
+
+#[derive(Event, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+pub enum MidiEnv {
+    On { note: u8, vel: u8 },
+    Off { note: u8 },
 }

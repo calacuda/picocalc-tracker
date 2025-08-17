@@ -14,10 +14,10 @@ use embedded_graphics::{
 use hal::entry;
 // use picocalc_bevy::PicoCalcDefaultPlugins;
 use embedded_graphics::Drawable;
-use picocalc_bevy::{Display, LoggingEnv as Log, Visible};
+use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::KEY_ENTER};
 use picocalc_tracker_lib::{
     CmdPallet, FirstViewTrack, Track, TrackID,
-    base_plugin::BasePlugin,
+    base_plugin::{BasePlugin, MidiEnv},
     embedded::{Shape, TextComponent},
     exit, hal,
 };
@@ -33,6 +33,12 @@ pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 static HEAP: Heap = Heap::empty();
 const HEAP_SIZE: usize = 128 * 1024;
 
+#[derive(Resource, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deref, DerefMut)]
+pub struct Playing(pub bool);
+
+#[derive(Component, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+pub struct PlayingMarker;
+
 #[entry]
 fn main() -> ! {
     init_heap();
@@ -40,9 +46,10 @@ fn main() -> ! {
     App::new()
         .add_plugins(BasePlugin)
         .insert_resource(CmdPallet(false))
+        .insert_resource(Playing(false))
         .init_resource::<FirstViewTrack>()
-        .add_systems(Startup, (setup,))
-        .add_systems(Update, (on_update,))
+        .add_systems(Startup, (setup, screen_test))
+        .add_systems(Update, (toggle_playing.run_if(enter_pressed),))
         .add_systems(PostUpdate, render)
         .run();
 
@@ -57,32 +64,49 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((TrackID(3), Track::default()));
 }
 
-fn screen_test(mut cmds: Commands) {
-    cmds.spawn(TextComponent {
-        text: "AbcdefghijklmnopqrstuvwxyzAbcdefghijklmnopqrstuvwxyzAbcdefghijklmnopqrstuvwxyz"
-            .into(),
-        point: Point::new(0, 10),
-    });
+fn screen_test(mut cmds: Commands, playing: Res<Playing>) {
+    cmds.spawn((
+        TextComponent {
+            text: format!("{}", playing.0),
+            point: Point::new(0, 10),
+            ..default()
+        },
+        PlayingMarker,
+    ));
 }
 
-fn on_update(mut logs: EventWriter<Log>) {
-    logs.write(Log::info("updating"));
+fn enter_pressed(keys: Res<KeyPresses>) -> bool {
+    keys.just_pressed(KEY_ENTER)
+}
+
+fn toggle_playing(
+    mut midi: EventWriter<MidiEnv>,
+    mut log: EventWriter<Log>,
+    mut text_dis: Single<&mut TextComponent, With<PlayingMarker>>,
+    mut playing: ResMut<Playing>,
+) {
+    playing.0 = !playing.0;
+    text_dis.set_text(format!("{}", playing.0));
+
+    if playing.0 {
+        midi.write(MidiEnv::On { note: 48, vel: 120 });
+        log.write(Log::info("playing"));
+    } else {
+        midi.write(MidiEnv::Off { note: 48 });
+        log.write(Log::info("not playing"));
+    }
 }
 
 fn render(
     mut display: NonSendMut<Display>,
-    // mut display: NonSendMut<DoubleFrameBuffer>,
-    // mut camera: ResMut<Engine3d>,
-    // mut player_buf: ResMut<DoubleBufferRes<PlayerLocation>>,
     text_comps: Query<
-        (&TextComponent, Option<&mut Visible>),
+        (&mut TextComponent, Option<&mut Visible>),
         (
             Or<(Changed<TextComponent>, Changed<Visible>)>,
             Without<Shape>,
         ),
     >,
     shape_comps: Query<(Ref<Shape>, Option<&mut Visible>), Without<TextComponent>>,
-    // mut logger: EventWriter<LoggingEnv>,
 ) {
     let Display { output: display } = display.as_mut();
 
@@ -135,8 +159,47 @@ fn render(
     let mut style = MonoTextStyle::new(&FONT_6X12, Rgb565::GREEN);
     style.background_color = Some(Rgb565::BLACK);
 
-    for (text, vis) in text_comps {
+    // for (text, vis) in text_comps.clone() {
+    //     let point = text.point;
+    //
+    //     // if vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()) {
+    //     //     // let text = text.text.clone();
+    //     //     Text::new(&text.text, point, style).draw(display).unwrap();
+    //     // } else if vis.as_ref().is_some_and(|vis| vis.should_rm()) {
+    //     //     let mut style = style.clone();
+    //     //     style.background_color = None;
+    //     //     style.text_color = Some(Rgb565::BLACK);
+    //     //
+    //     //     // let text: String = text
+    //     //     //     .text
+    //     //     //     .chars()
+    //     //     //     .map(|c| if !c.is_whitespace() { ' ' } else { c })
+    //     //     //     .collect();
+    //     //     Text::new(&text.text, point, style).draw(display).unwrap();
+    //     // }
+    //
+    //     // vis.map(|ref mut vis| vis.was_rendered());
+    // }
+
+    for (ref mut text, vis) in text_comps {
         let point = text.point;
+
+        if let Some(text) = text.old.clone()
+            && (vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()))
+        {
+            let mut style = style.clone();
+            style.background_color = None;
+            style.text_color = Some(Rgb565::BLACK);
+
+            // let text: String = text
+            //     .text
+            //     .chars()
+            //     .map(|c| if !c.is_whitespace() { ' ' } else { c })
+            //     .collect();
+            Text::new(&text, point, style).draw(display).unwrap();
+        }
+
+        text.was_rendered();
 
         if vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()) {
             // let text = text.text.clone();

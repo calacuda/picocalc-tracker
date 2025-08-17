@@ -7,16 +7,22 @@ use picocalc_bevy::Visible;
 #[require(Visible)]
 pub struct Renderable;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 #[require(Renderable)]
 pub struct TextComponent {
     pub text: String,
+    pub old: Option<String>,
     pub point: Point,
 }
 
 impl TextComponent {
-    pub fn set_text(&mut self, text: &str) {
-        self.text = text.into();
+    pub fn set_text(&mut self, text: impl ToString) {
+        self.old = Some(self.text.clone());
+        self.text = text.to_string();
+    }
+
+    pub fn was_rendered(&mut self) {
+        self.old = None;
     }
 }
 
