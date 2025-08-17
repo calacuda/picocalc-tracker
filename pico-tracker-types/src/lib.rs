@@ -32,6 +32,8 @@ pub enum FromTracker {
     MessageBus { message: String },
     /// instructs the host to send messages that match this message.
     ListenFor { message: String },
+    /// connects a channel to a midi dev
+    Connect { channel: u8, dev: String },
 }
 
 // Devs(dev_names:["foo","bar"])
