@@ -14,6 +14,7 @@ use embedded_graphics::{
 use hal::entry;
 // use picocalc_bevy::PicoCalcDefaultPlugins;
 use embedded_graphics::Drawable;
+use pico_tracker_types::FromHost;
 use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::KEY_ENTER};
 use picocalc_tracker_lib::{
     CmdPallet, FirstViewTrack, Track, TrackID,
@@ -39,6 +40,9 @@ pub struct Playing(pub bool);
 #[derive(Component, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct PlayingMarker;
 
+#[derive(Component, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+pub struct DevDisplay;
+
 #[entry]
 fn main() -> ! {
     init_heap();
@@ -49,7 +53,7 @@ fn main() -> ! {
         .insert_resource(Playing(false))
         .init_resource::<FirstViewTrack>()
         .add_systems(Startup, (setup, screen_test))
-        .add_systems(Update, (toggle_playing.run_if(enter_pressed),))
+        .add_systems(Update, (toggle_playing.run_if(enter_pressed), display_devs))
         .add_systems(PostUpdate, render)
         .run();
 
@@ -73,6 +77,15 @@ fn screen_test(mut cmds: Commands, playing: Res<Playing>) {
         },
         PlayingMarker,
     ));
+
+    cmds.spawn((
+        TextComponent {
+            text: format!("{:?}", Vec::<String>::default()),
+            point: Point::new(0, 20),
+            ..default()
+        },
+        DevDisplay,
+    ));
 }
 
 fn enter_pressed(keys: Res<KeyPresses>) -> bool {
@@ -94,6 +107,20 @@ fn toggle_playing(
     } else {
         midi.write(MidiEnv::Off { note: 48 });
         log.write(Log::info("not playing"));
+    }
+}
+
+fn display_devs(
+    mut devs: EventReader<FromHost>,
+    mut text_comps: Single<(&mut TextComponent,), (With<DevDisplay>, Without<Shape>)>,
+) {
+    for dev_ev in devs.read() {
+        // match dev_ev {
+        //     FromHost::MidiNoteOn
+        // }
+        if let FromHost::Devs { dev_names } = dev_ev {
+            text_comps.0.set_text(format!("{dev_names:?}"));
+        }
     }
 }
 

@@ -206,6 +206,31 @@ impl Plugin for BasePlugin {
                     res
                 };
 
+                let mut buf = [0u8; 512];
+
+                if let Ok(count) = serial.read(&mut buf[..]) {
+                    let raw_ron_msg: String = buf[..count]
+                        .into_iter()
+                        .filter_map(|byte| {
+                            let byte = *byte;
+                            // for the terminating Null byte.
+                            if byte != 0 { Some(byte as char) } else { None }
+                        })
+                        .collect();
+
+                    if let Ok(message) = ron::from_str(&raw_ron_msg) {
+                        let world = app.world_mut();
+                        if let Some(ref mut events) = world.get_resource_mut::<Events<FromHost>>() {
+                            events.send(message);
+                        }
+                    } else {
+                        let _ = ron::to_string(&FromTracker::Log {
+                            message: format!("failed to read to ron: {raw_ron_msg}"),
+                        })
+                        .map(|msg| ser_write(&mut serial, msg));
+                    }
+                };
+
                 app.update();
 
                 {

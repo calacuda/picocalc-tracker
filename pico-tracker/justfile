@@ -37,6 +37,12 @@ run:
 test:
   cargo test
 
+log:
+  /bin/cat < /dev/ttyACM1
+
+send-dev:
+  printf 'Devs(dev_names:["foo","bar"])' >> /dev/ttyACM1
+
 _new-tmux-dev-session SESSION:
   tmux new -ds "{{SESSION}}" -n "README"
   tmux send-keys -t "{{SESSION}}":README 'nv ./README.md "+set wrap"' ENTER
