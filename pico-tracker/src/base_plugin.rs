@@ -12,6 +12,8 @@ use embedded_hal::spi::MODE_3;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{SdCard, VolumeManager};
 use fugit::RateExtU32;
+use pico_tracker_types::ron;
+use pico_tracker_types::{FromHost, FromTracker};
 use picocalc_bevy::{
     Display, DummyTimesource, FileSystemStruct, Keeb, KeyPresses, LoggingEnv, PicoTimer,
     XTAL_FREQ_HZ, clear_display, get_key_report,
@@ -181,7 +183,7 @@ impl Plugin for BasePlugin {
             // serial.write(b"starting bevy\n").unwrap();
 
             // Create a MIDI class with 1 input and 1 output jack.
-            let mut midi = UsbMidiClass::new(&usb_bus, 0, 5).unwrap();
+            let mut midi = UsbMidiClass::new(&usb_bus, 1, 5).unwrap();
 
             let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x5e4))
                 .device_class(0)
@@ -197,32 +199,45 @@ impl Plugin for BasePlugin {
                 // let _ = usb_dev.poll(&mut [&mut serial]);
                 let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
 
+                let ser_write = |serial: &mut SerialPort<_>, message: String| {
+                    let res = serial.write(&message.into_bytes());
+                    _ = serial.write(&[0]);
+
+                    res
+                };
+
                 app.update();
 
                 {
                     let world = app.world_mut();
                     if let Some(ref mut events) = world.get_resource_mut::<Events<LoggingEnv>>() {
                         for event in events.iter_current_update_events() {
-                            let _ = serial.write(&event.msg.clone().into_bytes());
-                            let _ = serial.write(&['\n' as u8, '\r' as u8]);
+                            // let _ = serial.write(&event.msg.clone().into_bytes());
+                            // let _ = serial.write(&['\n' as u8, '\r' as u8]);
+
+                            let _ = ron::to_string(&FromTracker::Log {
+                                message: event.msg.clone(),
+                            })
+                            .map(|msg| ser_write(&mut serial, msg));
                         }
 
                         events.update();
                     }
                 }
 
-                // {
-                //     let world = app.world_mut();
-                //     if let Some(ref mut events) = world.get_resource_mut::<Events<MidiOutEnv>>() {
-                //         for event in events.iter_current_update_events() {
-                //             // let _ = serial.write(&[0]);
-                //             // let _ = serial.write(&event.msg.clone().into_bytes());
-                //             // let _ = serial.write(&['\n' as u8, '\r' as u8]);
-                //         }
-                //
-                //         events.update();
-                //     }
-                // }
+                {
+                    let world = app.world_mut();
+                    if let Some(ref mut events) = world.get_resource_mut::<Events<FromTracker>>() {
+                        for event in events.iter_current_update_events() {
+                            // let _ = serial.write(&[0]);
+                            // let _ = serial.write(&event.msg.clone().into_bytes());
+                            // let _ = serial.write(&['\n' as u8, '\r' as u8]);
+                            let _ = ron::to_string(event).map(|msg| ser_write(&mut serial, msg));
+                        }
+
+                        events.update();
+                    }
+                }
 
                 {
                     let world = app.world_mut();
@@ -256,6 +271,8 @@ impl Plugin for BasePlugin {
         .add_event::<LoggingEnv>()
         .add_event::<MidiOutEnv>()
         .add_event::<MidiEnv>()
+        .add_event::<FromHost>()
+        .add_event::<FromTracker>()
         .insert_non_send_resource(Keeb {
             i2c,
             adr: keeb_addr,
