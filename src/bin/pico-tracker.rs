@@ -19,7 +19,7 @@ use picocalc_tracker_lib::{
     CmdPallet, FirstViewTrack, Track, TrackID,
     base_plugin::BasePlugin,
     embedded::{Shape, TextComponent},
-    hal,
+    exit, hal,
 };
 
 // pub use picocalc_bevy::hal;
@@ -41,12 +41,13 @@ fn main() -> ! {
         .add_plugins(BasePlugin)
         .insert_resource(CmdPallet(false))
         .init_resource::<FirstViewTrack>()
-        .add_systems(Startup, (setup, screen_test))
+        .add_systems(Startup, (setup,))
         .add_systems(Update, (on_update,))
         .add_systems(PostUpdate, render)
         .run();
 
-    loop {}
+    // loop {}
+    exit()
 }
 
 fn setup(mut cmds: Commands) {

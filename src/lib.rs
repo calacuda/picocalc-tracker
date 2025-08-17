@@ -1,11 +1,18 @@
 #![no_std]
+#![no_main]
 
 extern crate alloc;
+
+use cortex_m_semihosting::debug;
+
+use defmt_rtt as _; // global logger
 
 use crate::helpers::less_then::UsizeLessThan;
 use bevy::prelude::*;
 use core::fmt::Display;
 use strum_macros::{Display, EnumString};
+
+use panic_probe as _;
 
 #[cfg(not(all(test, target_arch = "x86_64")))]
 pub use picocalc_bevy::hal;
@@ -23,6 +30,33 @@ pub const SCREEN_H: usize = 320;
 pub const N_STEPS: usize = 32;
 pub const CHAR_W: usize = 53;
 pub const CHAR_H: usize = 26;
+
+// // same panicking *behavior* as `panic-probe` but doesn't print a panic message
+// // this prevents the panic message being printed *twice* when `defmt::panic` is invoked
+// #[defmt::panic_handler]
+// fn panic() -> ! {
+//     cortex_m::asm::udf()
+// }
+
+/// Terminates the application and makes a semihosting-capable debug tool exit
+/// with status code 0.
+pub fn exit() -> ! {
+    loop {
+        debug::exit(debug::EXIT_SUCCESS);
+    }
+}
+
+/// Hardfault handler.
+///
+/// Terminates the application and makes a semihosting-capable debug tool exit
+/// with an error. This seems better than the default, which is to spin in a
+/// loop.
+#[cortex_m_rt::exception]
+unsafe fn HardFault(_frame: &cortex_m_rt::ExceptionFrame) -> ! {
+    loop {
+        debug::exit(debug::EXIT_FAILURE);
+    }
+}
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
 pub enum MainState {
@@ -149,26 +183,41 @@ pub struct TrackID(pub usize);
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct FirstViewTrack(pub usize);
 
-#[cfg(all(test, target_arch = "x86_64"))]
-#[macro_use]
+// #[cfg(all(test, target_arch = "x86_64"))]
+// #[macro_use]
+
+// defmt-test 0.3.0 has the limitation that this `#[tests]` attribute can only be used
+// once within a crate. the module can be in any file but there can only be at most
+// one `#[tests]` module in this library crate
+#[cfg(test)]
+#[defmt_test::tests]
 mod test {
-    extern crate std;
+    // extern crate std;
     use crate::*;
+    use defmt::assert_eq;
+    use embedded_alloc::LlffHeap as Heap;
+
+    #[global_allocator]
+    static HEAP: Heap = Heap::empty();
 
     #[test]
     fn tracker_cmd_display() {
         assert_eq!(
-            TrackerCmd::<Sf2Cmd>::None.to_string(),
-            "----".to_string(),
+            TrackerCmd::<Sf2Cmd>::None.to_string().as_str(),
+            "----",
             "{} != None",
-            TrackerCmd::<Sf2Cmd>::None.to_string()
+            TrackerCmd::<Sf2Cmd>::None.to_string().as_str()
         );
 
         assert_eq!(
-            TrackerCmd::<Sf2Cmd>::Custom(Sf2Cmd::Volume(0.5)).to_string(),
-            "Vol-".to_string(),
+            TrackerCmd::<Sf2Cmd>::Custom(Sf2Cmd::Volume(0.5))
+                .to_string()
+                .as_str(),
+            "Vol-",
             "{} != None",
-            TrackerCmd::<Sf2Cmd>::None.to_string()
+            TrackerCmd::<Sf2Cmd>::Custom(Sf2Cmd::Volume(0.5))
+                .to_string()
+                .as_str()
         )
     }
 }

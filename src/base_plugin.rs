@@ -1,7 +1,7 @@
 use crate::hal::{
     self, Sio,
     clocks::{Clock, init_clocks_and_plls},
-    gpio::Pin,
+    gpio::{FunctionI2C, Pin, PullUp},
     pac,
     powman::Powman,
     watchdog::Watchdog,
@@ -18,7 +18,6 @@ use picocalc_bevy::{
     screen::{Command, Commands, ILI9486, color::PixelFormat, io::shim::OutputOnlyIoPin},
     start_timer, tick_timer,
 };
-use rp235x_hal::gpio::{FunctionI2C, PullUp};
 use usb_device::{
     bus::UsbBusAllocator,
     device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid},
@@ -147,6 +146,12 @@ impl Plugin for BasePlugin {
         let sdcard = SdCard::new(spi, timer);
         let volume_mgr = VolumeManager::new(sdcard, DummyTimesource::default());
         let fs = FileSystemStruct(volume_mgr);
+
+        // start multi core sf2 player
+        // let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
+        // let cores = mc.cores();
+        // let core1 = &mut cores[1];
+        // let _test = core1.spawn(CORE1_STACK.take().unwrap(), move || core1_task(sys_freq));
 
         app.set_runner(move |mut app| {
             // usb logging
