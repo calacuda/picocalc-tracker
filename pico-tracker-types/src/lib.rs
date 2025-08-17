@@ -33,3 +33,5 @@ pub enum FromTracker {
     /// instructs the host to send messages that match this message.
     ListenFor { message: String },
 }
+
+// Devs(dev_names:["foo","bar"])
