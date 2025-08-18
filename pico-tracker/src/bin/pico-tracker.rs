@@ -122,7 +122,7 @@ fn setup_track_dis(mut cmds: Commands) {
 
         cmds.spawn((
             TextComponent {
-                text: format!("Chan: {}", col_n + 1),
+                text: format!("Channel: {}", col_n + 1),
                 point: Point::new(x_offset as i32, row_from_line(0)),
                 ..default()
             },
