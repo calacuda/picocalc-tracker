@@ -92,7 +92,7 @@ where
         Clone + Default + PartialEq + PartialOrd + core::fmt::Display + ToString + core::fmt::Debug,
 {
     pub note: Option<MidiNote>,
-    cmds: (TrackerCmd<Cmd>, TrackerCmd<Cmd>),
+    pub cmds: (TrackerCmd<Cmd>, TrackerCmd<Cmd>),
 }
 
 #[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd, Eq, Hash)]
@@ -191,6 +191,18 @@ pub fn row_from_line(row_i: usize) -> i32 {
 
 pub fn x_from_col(col_i: usize) -> i32 {
     6 * col_i as i32
+}
+
+pub fn display_midi_note(midi_note: MidiNote) -> String {
+    let note_name_i = midi_note % 12;
+    let octave = midi_note / 12;
+
+    let note_names = [
+        "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-", "B#",
+    ];
+    let note_name = note_names[note_name_i as usize];
+
+    format!("{note_name}{octave:X}")
 }
 
 // #[cfg(all(test, target_arch = "x86_64"))]

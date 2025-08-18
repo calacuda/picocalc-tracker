@@ -19,8 +19,10 @@ pub struct TextComponent {
 
 impl TextComponent {
     pub fn set_text(&mut self, text: impl ToString) {
-        self.old = Some(self.text.clone());
-        self.text = text.to_string();
+        if text.to_string() != self.text {
+            self.old = Some(self.text.clone());
+            self.text = text.to_string();
+        }
     }
 
     pub fn was_rendered(&mut self) {
