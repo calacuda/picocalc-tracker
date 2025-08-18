@@ -198,6 +198,7 @@ impl Plugin for BasePlugin {
             loop {
                 // let _ = usb_dev.poll(&mut [&mut serial]);
                 let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
+                // let _ = usb_dev.poll(&mut [&mut midi]);
 
                 let ser_write = |serial: &mut SerialPort<_>, message: String| {
                     let res = serial.write(&message.into_bytes());

@@ -226,20 +226,20 @@ fn setup_track_dis(mut cmds: Commands) {
 //     cmds.spawn((
 //         TextComponent {
 //             text: format!("{}", playing.0).to_uppercase(),
-//             point: Point::new(0, row_from_line(0)),
+//             point: Point::new(0, row_from_line(1)),
 //             ..default()
 //         },
 //         PlayingMarker,
 //     ));
 //
-//     cmds.spawn((
-//         TextComponent {
-//             text: format!("{:?}", Vec::<String>::default()),
-//             point: Point::new(0, row_from_line(1)),
-//             ..default()
-//         },
-//         DevDisplay,
-//     ));
+//     // cmds.spawn((
+//     //     TextComponent {
+//     //         text: format!("{:?}", Vec::<String>::default()),
+//     //         point: Point::new(0, row_from_line(1)),
+//     //         ..default()
+//     //     },
+//     //     DevDisplay,
+//     // ));
 // }
 
 fn display_tracks(
@@ -345,11 +345,11 @@ fn enter_pressed(keys: Res<KeyPresses>) -> bool {
 fn toggle_playing(
     mut midi: EventWriter<MidiEnv>,
     mut log: EventWriter<Log>,
-    mut text_dis: Single<&mut TextComponent, With<PlayingMarker>>,
+    // mut text_dis: Single<&mut TextComponent, With<PlayingMarker>>,
     mut playing: ResMut<Playing>,
 ) {
     playing.0 = !playing.0;
-    text_dis.set_text(format!("{}", playing.0).to_uppercase());
+    // text_dis.set_text(format!("{}", playing.0).to_uppercase());
 
     if playing.0 {
         midi.write(MidiEnv::On { note: 48, vel: 120 });

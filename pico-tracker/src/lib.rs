@@ -5,7 +5,7 @@ extern crate alloc;
 
 use cortex_m_semihosting::debug;
 
-use defmt_rtt as _; // global logger
+// use defmt_rtt as _; // global logger
 
 use crate::helpers::less_then::UsizeLessThan;
 use bevy::prelude::*;
