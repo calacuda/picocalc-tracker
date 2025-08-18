@@ -28,10 +28,12 @@ pub type MidiNote = u8;
 pub const SCREEN_W: usize = 320;
 pub const SCREEN_H: usize = 320;
 pub const N_STEPS: usize = 32;
-pub const CHAR_W: usize = 53;
-pub const CHAR_H: usize = 26;
-pub const Y_OFFSET: i32 = 8;
+pub const CHAR_W: usize = 40;
+pub const CHAR_H: usize = 24;
+pub const Y_OFFSET: i32 = 11;
 pub const COL_W: usize = 18;
+pub const CHAR_PIX_W: i32 = 8;
+pub const CHAR_PIX_H: i32 = 13;
 
 // // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // // this prevents the panic message being printed *twice* when `defmt::panic` is invoked
@@ -186,11 +188,11 @@ pub struct TrackID(pub usize);
 pub struct FirstViewTrack(pub usize);
 
 pub fn row_from_line(row_i: usize) -> i32 {
-    Y_OFFSET + (12 * row_i as i32)
+    Y_OFFSET + (CHAR_PIX_H * row_i as i32)
 }
 
 pub fn x_from_col(col_i: usize) -> i32 {
-    6 * col_i as i32
+    CHAR_PIX_W * col_i as i32
 }
 
 pub fn display_midi_note(midi_note: MidiNote) -> String {

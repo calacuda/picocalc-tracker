@@ -6,7 +6,7 @@ extern crate alloc;
 use bevy::prelude::*;
 use embedded_alloc::LlffHeap as Heap;
 use embedded_graphics::{
-    mono_font::{MonoTextStyle, ascii::FONT_6X12},
+    mono_font::{MonoTextStyle, ascii::FONT_8X13},
     pixelcolor::Rgb565,
     prelude::{Point, RgbColor},
     text::Text,
@@ -98,7 +98,7 @@ fn main() -> ! {
 fn setup_tracks(mut cmds: Commands) {
     cmds.spawn((TrackID(0), Track::default()));
     cmds.spawn((TrackID(1), Track::default()));
-    cmds.spawn((TrackID(2), Track::default()));
+    // cmds.spawn((TrackID(2), Track::default()));
     // cmds.spawn((TrackID(3), Track::default()));
 }
 
@@ -115,7 +115,9 @@ fn setup_cursor(mut cmds: Commands) {
 }
 
 fn setup_track_dis(mut cmds: Commands) {
-    for col_n in 0u8..3 {
+    let n_col = 2;
+
+    for col_n in 0u8..n_col {
         let x_offset = x_from_col(COL_W * col_n as usize);
 
         cmds.spawn((
@@ -149,7 +151,7 @@ fn setup_track_dis(mut cmds: Commands) {
                     ..default()
                 },
                 // Visible::new(false),
-                CursorID(i * 9 + col_n as usize * 3 + 0),
+                CursorID(i * 6 + col_n as usize * 3 + 0),
             ));
 
             // Note display
@@ -175,7 +177,7 @@ fn setup_track_dis(mut cmds: Commands) {
                     ..default()
                 },
                 // Visible::new(false),
-                CursorID(i * 9 + (col_n as usize * 3) + 1),
+                CursorID(i * 6 + (col_n as usize * 3) + 1),
             ));
 
             // cmd 1
@@ -200,7 +202,7 @@ fn setup_track_dis(mut cmds: Commands) {
                     ..default()
                 },
                 // Visible::new(false),
-                CursorID(i * 9 + (col_n as usize * 3) + 2),
+                CursorID(i * 6 + (col_n as usize * 3) + 2),
             ));
 
             // cmd 2
@@ -303,7 +305,7 @@ fn cursor_tracks(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
         && !keys.is_pressed(KEY_RIGHT)
     {
         if x == 0 {
-            location.0 = 8;
+            location.0 = 5;
         } else {
             location.0 -= 1;
         }
@@ -312,11 +314,11 @@ fn cursor_tracks(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
         && !keys.is_pressed(KEY_DOWN)
         && !keys.is_pressed(KEY_LEFT)
     {
-        if x == 8 {
+        if x == 5 {
             location.0 = 0;
         } else {
             location.0 += 1;
-            location.0 %= 8;
+            location.0 %= 6;
         };
     }
 }
@@ -325,7 +327,7 @@ fn display_cursor(
     cursors: Query<(&mut Visible, &CursorID), With<TextComponent>>,
     loc: Res<CursorLocation>,
 ) {
-    let target = loc.1 * 9 + loc.0;
+    let target = loc.1 * 6 + loc.0;
 
     for (ref mut vis, CursorID(id)) in cursors {
         // if *id == target && !vis.should_show() {
@@ -431,7 +433,7 @@ fn render(
     //     vis.map(|ref mut vis| vis.was_rendered());
     // }
 
-    let mut style = MonoTextStyle::new(&FONT_6X12, Rgb565::GREEN);
+    let mut style = MonoTextStyle::new(&FONT_8X13, Rgb565::GREEN);
     // style.background_color = Some(Rgb565::BLACK);
     style.background_color = None;
 
