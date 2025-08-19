@@ -22,6 +22,7 @@ pub mod base_plugin;
 #[cfg(not(all(test, target_arch = "x86_64")))]
 pub mod embedded;
 pub mod helpers;
+pub mod midi_plugin;
 
 pub type MidiNote = u8;
 
@@ -72,6 +73,12 @@ pub enum MainState {
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct CmdPallet(pub bool);
+
+#[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
+pub struct Playing(pub bool);
+
+#[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
+pub struct Tempo(pub u16);
 
 #[derive(Clone, Debug, Component, PartialEq, PartialOrd)]
 pub enum Track {
@@ -182,7 +189,10 @@ impl Default for Sf2Cmd {
 }
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Component)]
-pub struct TrackID(pub usize);
+pub struct TrackID {
+    pub id: usize,
+    pub playing: bool,
+}
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct FirstViewTrack(pub usize);
@@ -205,6 +215,10 @@ pub fn display_midi_note(midi_note: MidiNote) -> String {
     let note_name = note_names[note_name_i as usize];
 
     format!("{note_name}{octave:X}")
+}
+
+pub fn playing(am_playing: Res<Playing>) -> bool {
+    **am_playing
 }
 
 // #[cfg(all(test, target_arch = "x86_64"))]

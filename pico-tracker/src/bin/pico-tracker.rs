@@ -16,11 +16,13 @@ use hal::entry;
 use embedded_graphics::Drawable;
 use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::*};
 use picocalc_tracker_lib::{
-    CHAR_H, COL_W, CmdPallet, FirstViewTrack, Track, TrackID,
+    CHAR_H, COL_W, CmdPallet, FirstViewTrack, MidiCmd, N_STEPS, Step, Track, TrackID,
     base_plugin::{BasePlugin, MidiEnv},
     display_midi_note,
     embedded::{Shape, TextComponent},
-    exit, hal, row_from_line, x_from_col,
+    exit, hal,
+    midi_plugin::MidiOutPlugin,
+    row_from_line, x_from_col,
 };
 
 // pub use picocalc_bevy::hal;
@@ -74,6 +76,7 @@ fn main() -> ! {
 
     App::new()
         .add_plugins(BasePlugin)
+        .add_plugins(MidiOutPlugin)
         .insert_resource(CmdPallet(false))
         .insert_resource(Playing(false))
         .init_resource::<FirstViewTrack>()
@@ -96,8 +99,32 @@ fn main() -> ! {
 }
 
 fn setup_tracks(mut cmds: Commands) {
-    cmds.spawn((TrackID(0), Track::default()));
-    cmds.spawn((TrackID(1), Track::default()));
+    let mut steps: Vec<Step<MidiCmd>> = (1..N_STEPS).map(|_| Step::default()).collect();
+    // steps[0].note = Some(48);
+
+    let note = [48, 52, 55, 59];
+    for (i, step) in steps.iter_mut().step_by(8).enumerate() {
+        step.note = Some(note[i % 4]);
+    }
+
+    let track = Track::Midi { steps };
+
+    // cmds.spawn((TrackID(0), Track::default()));
+    cmds.spawn((
+        TrackID {
+            id: 0,
+            playing: true,
+        },
+        track,
+    ));
+    // cmds.spawn((TrackID(1), Track::default()));
+    cmds.spawn((
+        TrackID {
+            id: 1,
+            playing: false,
+        },
+        Track::default(),
+    ));
     // cmds.spawn((TrackID(2), Track::default()));
     // cmds.spawn((TrackID(3), Track::default()));
 }
@@ -247,7 +274,7 @@ fn display_tracks(
     tracks: Query<(&Track, &TrackID)>,
 ) {
     let mut tracks: Vec<(&Track, &TrackID)> = tracks.into_iter().collect();
-    tracks.sort_by_key(|(_track, id): &(&Track, &TrackID)| id.0);
+    tracks.sort_by_key(|(_track, id): &(&Track, &TrackID)| id.id);
 
     for (ref mut text, cell) in text_comps {
         let track = tracks[cell.track as usize].0;
@@ -436,28 +463,6 @@ fn render(
     let mut style = MonoTextStyle::new(&FONT_8X13, Rgb565::GREEN);
     // style.background_color = Some(Rgb565::BLACK);
     style.background_color = None;
-
-    // for (text, vis) in text_comps.clone() {
-    //     let point = text.point;
-    //
-    //     // if vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()) {
-    //     //     // let text = text.text.clone();
-    //     //     Text::new(&text.text, point, style).draw(display).unwrap();
-    //     // } else if vis.as_ref().is_some_and(|vis| vis.should_rm()) {
-    //     //     let mut style = style.clone();
-    //     //     style.background_color = None;
-    //     //     style.text_color = Some(Rgb565::BLACK);
-    //     //
-    //     //     // let text: String = text
-    //     //     //     .text
-    //     //     //     .chars()
-    //     //     //     .map(|c| if !c.is_whitespace() { ' ' } else { c })
-    //     //     //     .collect();
-    //     //     Text::new(&text.text, point, style).draw(display).unwrap();
-    //     // }
-    //
-    //     // vis.map(|ref mut vis| vis.was_rendered());
-    // }
 
     for (ref mut text, vis) in text_comps {
         let point = text.point;

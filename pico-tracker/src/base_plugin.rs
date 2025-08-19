@@ -202,7 +202,7 @@ impl Plugin for BasePlugin {
 
                 let ser_write = |serial: &mut SerialPort<_>, message: String| {
                     let res = serial.write(&message.into_bytes());
-                    _ = serial.write(&[0]);
+                    _ = serial.write(&['\n' as u8, '\r' as u8]);
 
                     res
                 };
@@ -270,10 +270,10 @@ impl Plugin for BasePlugin {
                     if let Some(ref mut events) = world.get_resource_mut::<Events<MidiEnv>>() {
                         for event in events.iter_current_update_events() {
                             let packet = match *event {
-                                MidiEnv::On { note, vel: _ } => Message::NoteOn(
+                                MidiEnv::On { note, vel } => Message::NoteOn(
                                     Channel::Channel1,
                                     Note::try_from(note).unwrap(),
-                                    Velocity::try_from(120).unwrap(),
+                                    Velocity::try_from(vel).unwrap(),
                                 ),
                                 MidiEnv::Off { note } => Message::NoteOff(
                                     Channel::Channel1,
