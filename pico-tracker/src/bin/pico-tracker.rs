@@ -16,13 +16,7 @@ use hal::entry;
 use embedded_graphics::Drawable;
 use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::*};
 use picocalc_tracker_lib::{
-    CHAR_H, COL_W, CmdPallet, FirstViewTrack, MidiCmd, N_STEPS, Step, Track, TrackID,
-    base_plugin::{BasePlugin, MidiEnv},
-    display_midi_note,
-    embedded::{Shape, TextComponent},
-    exit, hal,
-    midi_plugin::MidiOutPlugin,
-    row_from_line, x_from_col,
+    base_plugin::{BasePlugin, MidiEnv}, display_midi_note, embedded::{Shape, TextComponent}, exit, hal, midi_plugin::{get_step_num, MidiOutPlugin, SyncPulse, BPQ}, row_from_line, x_from_col, CmdPallet, EdittingCell, FirstViewTrack, MidiCmd, Step, Track, TrackID, CHAR_H, COL_W, N_STEPS
 };
 
 // pub use picocalc_bevy::hal;
@@ -79,16 +73,19 @@ fn main() -> ! {
         .add_plugins(MidiOutPlugin)
         .insert_resource(CmdPallet(false))
         .insert_resource(Playing(false))
+        .insert_resource(EdittingCell(false))
         .init_resource::<FirstViewTrack>()
         .init_resource::<CursorLocation>()
         .add_systems(Startup, (setup_tracks, setup_track_dis, setup_cursor))
         .add_systems(
             Update,
             (
+                // DEBUG
                 toggle_playing.run_if(enter_pressed),
                 display_tracks,
-                cursor_tracks.run_if(not(shift_pressed)),
+                move_cursor.run_if(not(shift_pressed)),
                 display_cursor,
+                display_step,
             ),
         )
         .add_systems(PostUpdate, render)
@@ -302,7 +299,7 @@ fn shift_pressed(keys: Res<KeyPresses>) -> bool {
     keys.is_pressed(KEY_MOD_SHL) || keys.is_pressed(KEY_MOD_SHR)
 }
 
-fn cursor_tracks(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
+fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
     let CursorLocation(x, y) = *location;
 
     if keys.just_pressed(KEY_UP)
@@ -401,6 +398,20 @@ fn toggle_playing(
 //     }
 // }
 
+/// changes the color of the step lable that is being played
+fn display_step(
+    mut line_num: Query<&mut TextComponent, With<TitleMarker>>,
+    pulse: Res<SyncPulse>,
+    bpq: Res<BPQ>,
+) {
+    let step_i = get_step_num(&pulse, &bpq);
+    let target = format!("{: >2}", step_i);
+
+    line_num.iter_mut().for_each(|ref mut text| if text.text == target {
+        text.color = Some(Rgb565::YELLOW);
+    })
+}
+
 fn render(
     mut display: NonSendMut<Display>,
     text_comps: Query<
@@ -467,12 +478,16 @@ fn render(
     for (ref mut text, vis) in text_comps {
         let point = text.point;
 
+
         if let Some(display_text) = text.old.clone()
             && (vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()))
         {
-            let mut style = style.clone();
+            // let mut style = style.clone();
+            let mut style = style;
             // style.text_color = Some(Rgb565::BLACK);
-            style.text_color = Some(text.bg_color.unwrap_or(Rgb565::BLACK));
+            // TODO: make the text_color "None" and see if it still clears.
+            // style.text_color = Some(text.bg_color.unwrap_or(Rgb565::BLACK));
+            style.text_color = None;
             Text::new(&display_text, point, style)
                 .draw(display)
                 .unwrap();
@@ -482,11 +497,13 @@ fn render(
 
         if vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()) {
             // let text = text.text.clone();
-            let mut style = style.clone();
+            // let mut style = style.clone();
+            let mut style = style;
             style.text_color = Some(text.color.unwrap_or(Rgb565::GREEN));
             Text::new(&text.text, point, style).draw(display).unwrap();
         } else if vis.as_ref().is_some_and(|vis| vis.should_rm()) {
-            let mut style = style.clone();
+            // let mut style = style.clone();
+            let mut style = style;
             style.text_color = Some(text.bg_color.unwrap_or(Rgb565::BLACK));
             Text::new(&text.text, point, style).draw(display).unwrap();
         }

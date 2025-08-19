@@ -75,6 +75,9 @@ pub enum MainState {
 pub struct CmdPallet(pub bool);
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
+pub struct EdittingCell(pub bool);
+
+#[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]
 pub struct Playing(pub bool);
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash, Resource, Deref, DerefMut)]

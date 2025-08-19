@@ -1,5 +1,5 @@
 use crate::{
-    N_STEPS, Playing, Tempo, Track, TrackID, base_plugin::MidiEnv, hal::timer::Instant, playing,
+    base_plugin::MidiEnv, hal::timer::Instant, playing, Playing, Tempo, Track, TrackID, N_STEPS,
 };
 use bevy::prelude::*;
 use core::time::Duration;
@@ -56,7 +56,6 @@ impl Plugin for MidiOutPlugin {
             last_pulse_time: Instant::from_ticks(0),
             n_pulses: 0,
         })
-        // .insert_resource(ControllerName("MPK mini Plus MIDI".into()))
         .insert_resource(LastPlayedPulse(None))
         .insert_resource(Tempo(120))
         .insert_resource(SyncTimer(Timer::new(
@@ -64,30 +63,11 @@ impl Plugin for MidiOutPlugin {
             TimerMode::Repeating,
         )))
         .insert_resource(Playing(true))
-        // .insert_resource(PlayingPhrase(0, 0, None))
         .insert_resource(BPQ(48))
         // .insert_resource(LastPlayedPulse(None))
         .insert_resource(PlayingSyncPulse(true))
-        // .add_systems(
-        //     Update,
-        //     // start_playing.run_if(not(in_state(PlayingState::Playing))),
-        //     toggle_playing,
-        // )
-        // .add_systems(Update, connect)
-        // .add_systems(Update, (stop_queued, stop_playing).run_if(in_state(PlayingState::Playing)))
-        // .add_systems(Update, toggle_syncing)
-        // .add_systems(Update, (play_queued, (stop_queued, stop_playing).chain()).run_if(in_state(PlayingState::Playing)).run_if(should_play_queue))
-        // .add_systems(OnEnter(PlayingState::Playing), setup)
-
         .add_systems(Startup, setup)
-
-        // .add_systems(OnExit(PlayingState::Playing), cleanup)
-
-        .add_systems(
-            Update,
-            sync.run_if(sync_pulsing),
-        )
-
+        .add_systems(Update, sync.run_if(sync_pulsing))
         .add_systems(
             Update,
             (
@@ -95,15 +75,9 @@ impl Plugin for MidiOutPlugin {
                 note_notif.run_if(playing),
                 // update_front_end.run_if(sync_pulsing)
             )
-            // .chain()
-            .run_if(on_thirtysecond_note)
-            // .run_if(not_played_yet),
-        )
-        // .add_systems(
-        //     Update,
-        //     (refresh_ports, connect).run_if(in_state(PlayingState::Playing)),
-        // )
-        ;
+                // .chain()
+                .run_if(on_thirtysecond_note),
+        );
     }
 }
 
@@ -239,12 +213,13 @@ fn send_notes(
     mut midi_out: EventWriter<MidiEnv>,
     mut log: EventWriter<Log>,
 ) {
-    for (ref track, ref id) in tracks.iter() {
-        if id.playing {
-            // let step_i = pulse.n_pulses % (bpq.0 / 8);
-            let step_i = (pulse.n_pulses / (bpq.0 / 8)) % N_STEPS;
-            let last_step_i = if step_i > 0 { step_i - 1 } else { N_STEPS - 1 };
+    // let step_i = pulse.n_pulses % (bpq.0 / 8);
+    // let step_i = (pulse.n_pulses / (bpq.0 / 8)) % N_STEPS;
+    let step_i = get_step_num(&pulse, &bpq);
+    let last_step_i = if step_i > 0 { step_i - 1 } else { N_STEPS - 1 };
 
+    for (ref track, id) in tracks.iter() {
+        if id.playing {
             match track {
                 Track::Midi { steps } => {
                     if let Some(Some(note)) = steps.get(last_step_i).map(|step| step.note) {
@@ -265,6 +240,10 @@ fn send_notes(
     }
 
     // _ = last_played.0.insert(pulse.n_pulses);
+}
+
+pub fn get_step_num(pulse: &Res<SyncPulse>, bpq: &Res<BPQ>) -> usize {
+    (pulse.n_pulses / (bpq.0 / 8)) % N_STEPS
 }
 
 // fn toggle_playing(
