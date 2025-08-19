@@ -80,10 +80,10 @@ fn main() -> ! {
         .add_systems(
             Update,
             (
-                // DEBUG
-                toggle_playing.run_if(enter_pressed),
+                toggle_playing.run_if(enter_pressed), // DEBUG
                 display_tracks,
                 move_cursor.run_if(not(shift_pressed)),
+                edit_cell.run_if(shift_pressed)),
                 display_cursor,
                 display_step,
             ),
@@ -307,6 +307,7 @@ fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
+        // TODO: Shift view up if view is not at the top
         if y == 0 {
             location.1 = CHAR_H - 4;
         } else {
@@ -317,6 +318,7 @@ fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
+        // TODO: Shift view down if view is not at the top
         if y == CHAR_H - 4 {
             location.1 = 0;
         } else {
@@ -342,8 +344,39 @@ fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
             location.0 = 0;
         } else {
             location.0 += 1;
-            location.0 %= 6;
         };
+    }
+}
+
+/// alters the selected cell 
+fn edit_cell(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>, tracks: Query<(&Track, &TrackID)>) {
+    let CursorLocation(x, y) = *location;
+
+    if keys.just_pressed(KEY_UP)
+        && !keys.is_pressed(KEY_DOWN)
+        && !keys.is_pressed(KEY_LEFT)
+        && !keys.is_pressed(KEY_RIGHT)
+    {
+        // little up        
+    } else if keys.just_pressed(KEY_DOWN)
+        && !keys.is_pressed(KEY_UP)
+        && !keys.is_pressed(KEY_LEFT)
+        && !keys.is_pressed(KEY_RIGHT)
+    {
+        // little down        
+    } else if keys.just_pressed(KEY_LEFT)
+        && !keys.is_pressed(KEY_UP)
+        && !keys.is_pressed(KEY_DOWN)
+        && !keys.is_pressed(KEY_RIGHT)
+    {
+        // big down   
+    } else if keys.just_pressed(KEY_RIGHT)
+        && !keys.is_pressed(KEY_UP)
+        && !keys.is_pressed(KEY_DOWN)
+        && !keys.is_pressed(KEY_LEFT)
+    {
+        
+        // big up   
     }
 }
 
@@ -421,7 +454,7 @@ fn render(
             Without<Shape>,
         ),
     >,
-    shape_comps: Query<(Ref<Shape>, Option<&mut Visible>), Without<TextComponent>>,
+    _shape_comps: Query<(Ref<Shape>, Option<&mut Visible>), Without<TextComponent>>,
 ) {
     let Display { output: display } = display.as_mut();
 
