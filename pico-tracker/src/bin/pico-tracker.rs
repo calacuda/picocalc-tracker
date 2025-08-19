@@ -16,7 +16,13 @@ use hal::entry;
 use embedded_graphics::Drawable;
 use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::*};
 use picocalc_tracker_lib::{
-    base_plugin::{BasePlugin, MidiEnv}, display_midi_note, embedded::{Shape, TextComponent}, exit, hal, midi_plugin::{get_step_num, MidiOutPlugin, SyncPulse, BPQ}, row_from_line, x_from_col, CmdPallet, EdittingCell, FirstViewTrack, MidiCmd, Step, Track, TrackID, CHAR_H, COL_W, N_STEPS
+    CHAR_H, COL_W, CmdPallet, EdittingCell, FirstViewTrack, MidiCmd, N_STEPS, Step, Track, TrackID,
+    base_plugin::{BasePlugin, MidiEnv},
+    display_midi_note,
+    embedded::{Shape, TextComponent},
+    exit, hal,
+    midi_plugin::{BPQ, MidiOutPlugin, SyncPulse, get_step_num},
+    row_from_line, x_from_col,
 };
 
 // pub use picocalc_bevy::hal;
@@ -83,7 +89,7 @@ fn main() -> ! {
                 toggle_playing.run_if(enter_pressed), // DEBUG
                 display_tracks,
                 move_cursor.run_if(not(shift_pressed)),
-                edit_cell.run_if(shift_pressed)),
+                edit_cell.run_if(shift_pressed),
                 display_cursor,
                 display_step,
             ),
@@ -348,8 +354,12 @@ fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
     }
 }
 
-/// alters the selected cell 
-fn edit_cell(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>, tracks: Query<(&Track, &TrackID)>) {
+/// alters the selected cell
+fn edit_cell(
+    keys: Res<KeyPresses>,
+    mut location: ResMut<CursorLocation>,
+    tracks: Query<(&Track, &TrackID)>,
+) {
     let CursorLocation(x, y) = *location;
 
     if keys.just_pressed(KEY_UP)
@@ -357,26 +367,26 @@ fn edit_cell(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>, tracks
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
-        // little up        
+        // little up
     } else if keys.just_pressed(KEY_DOWN)
         && !keys.is_pressed(KEY_UP)
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
-        // little down        
+        // little down
     } else if keys.just_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_UP)
         && !keys.is_pressed(KEY_DOWN)
         && !keys.is_pressed(KEY_RIGHT)
     {
-        // big down   
+        // big down
     } else if keys.just_pressed(KEY_RIGHT)
         && !keys.is_pressed(KEY_UP)
         && !keys.is_pressed(KEY_DOWN)
         && !keys.is_pressed(KEY_LEFT)
     {
-        
-        // big up   
+
+        // big up
     }
 }
 
@@ -440,8 +450,10 @@ fn display_step(
     let step_i = get_step_num(&pulse, &bpq);
     let target = format!("{: >2}", step_i);
 
-    line_num.iter_mut().for_each(|ref mut text| if text.text == target {
-        text.color = Some(Rgb565::YELLOW);
+    line_num.iter_mut().for_each(|ref mut text| {
+        if text.text == target {
+            text.color = Some(Rgb565::YELLOW);
+        }
     })
 }
 
@@ -510,7 +522,6 @@ fn render(
 
     for (ref mut text, vis) in text_comps {
         let point = text.point;
-
 
         if let Some(display_text) = text.old.clone()
             && (vis.is_none() || vis.as_ref().is_some_and(|vis| vis.should_show()))
