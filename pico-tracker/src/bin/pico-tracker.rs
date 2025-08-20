@@ -90,9 +90,9 @@ fn main() -> ! {
         .add_systems(
             Update,
             (
-                toggle_playing
-                    .run_if(enter_just__pressed)
-                    .run_if(shift_pressed), // DEBUG
+                // toggle_playing
+                //     .run_if(enter_just_pressed)
+                //     .run_if(shift_pressed), // DEBUG
                 display_tracks,
                 display_line_nums,
                 move_cursor.run_if(not(enter_pressed)),
@@ -495,7 +495,7 @@ fn enter_pressed(keys: Res<KeyPresses>) -> bool {
     keys.is_pressed(KEY_ENTER)
 }
 
-fn enter_just__pressed(keys: Res<KeyPresses>) -> bool {
+fn enter_just_pressed(keys: Res<KeyPresses>) -> bool {
     keys.just_pressed(KEY_ENTER)
 }
 
@@ -533,16 +533,21 @@ fn toggle_playing(
 
 /// changes the color of the step lable that is being played
 fn display_step(
-    mut line_num: Query<&mut TextComponent, With<TitleMarker>>,
+    mut line_num: Query<&mut TextComponent, With<LineNumMarker>>,
     pulse: Res<SyncPulse>,
     bpq: Res<BPQ>,
 ) {
     let step_i = get_step_num(&pulse, &bpq);
     let target = format!("{: >2}", step_i);
+    let alert_color = Rgb565::RED;
 
     line_num.iter_mut().for_each(|ref mut text| {
         if text.text == target {
-            text.color = Some(Rgb565::YELLOW);
+            // text.color = Some(Rgb565::YELLOW);
+            text.color = Some(alert_color);
+            // text.old = Some("_".into());
+        } else if text.color == Some(alert_color) {
+            text.color = Some(Rgb565::GREEN);
         }
     })
 }
