@@ -9,7 +9,7 @@ use cortex_m_semihosting::debug;
 
 use crate::helpers::less_then::UsizeLessThan;
 use bevy::prelude::*;
-use core::fmt::Display;
+use core::{fmt::Display, ops::Index};
 use strum_macros::{Display, EnumString};
 
 use panic_probe as _;
@@ -62,6 +62,8 @@ unsafe fn HardFault(_frame: &cortex_m_rt::ExceptionFrame) -> ! {
         debug::exit(debug::EXIT_FAILURE);
     }
 }
+
+// pub trait CellEditable
 
 #[derive(Clone, Copy, Default, Debug, States, PartialEq, Eq, Hash)]
 pub enum MainState {

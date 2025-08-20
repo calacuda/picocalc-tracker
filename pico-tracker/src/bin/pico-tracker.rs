@@ -16,7 +16,7 @@ use hal::entry;
 use embedded_graphics::Drawable;
 use picocalc_bevy::{Display, KeyPresses, LoggingEnv as Log, Visible, keys::*};
 use picocalc_tracker_lib::{
-    CHAR_H, COL_W, CmdPallet, EdittingCell, FirstViewTrack, MidiCmd, N_STEPS, Step, Track, TrackID,
+    CHAR_H, COL_W, CmdPallet, EdittingCell, FirstViewTrack, N_STEPS, Track, TrackID,
     base_plugin::{BasePlugin, MidiEnv},
     display_midi_note,
     embedded::{Shape, TextComponent},
@@ -70,6 +70,9 @@ pub struct CursorID(usize);
 #[derive(Resource, Default, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub struct CursorLocation(pub usize, pub usize);
 
+#[derive(Resource, Default, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
+pub struct DisplayStart(pub usize);
+
 #[entry]
 fn main() -> ! {
     init_heap();
@@ -82,14 +85,24 @@ fn main() -> ! {
         .insert_resource(EdittingCell(false))
         .init_resource::<FirstViewTrack>()
         .init_resource::<CursorLocation>()
+        .init_resource::<DisplayStart>()
         .add_systems(Startup, (setup_tracks, setup_track_dis, setup_cursor))
         .add_systems(
             Update,
             (
-                toggle_playing.run_if(enter_pressed), // DEBUG
+                toggle_playing
+                    .run_if(enter_just__pressed)
+                    .run_if(shift_pressed), // DEBUG
                 display_tracks,
-                move_cursor.run_if(not(shift_pressed)),
-                edit_cell.run_if(shift_pressed),
+                display_line_nums,
+                move_cursor.run_if(not(enter_pressed)),
+                (
+                    edit_note.run_if(note_selected),
+                    edit_cmd.run_if(not(note_selected)),
+                )
+                    .chain()
+                    .run_if(enter_pressed),
+                delete_note.run_if(note_selected),
                 display_cursor,
                 display_step,
             ),
@@ -102,25 +115,23 @@ fn main() -> ! {
 }
 
 fn setup_tracks(mut cmds: Commands) {
-    let mut steps: Vec<Step<MidiCmd>> = (1..N_STEPS).map(|_| Step::default()).collect();
-    // steps[0].note = Some(48);
+    // let mut steps: Vec<Step<MidiCmd>> = (1..N_STEPS).map(|_| Step::default()).collect();
+    //
+    // let note = [48, 52, 55, 59];
+    // for (i, step) in steps.iter_mut().step_by(8).enumerate() {
+    //     step.note = Some(note[i % 4]);
+    // }
+    //
+    // let track = Track::Midi { steps };
 
-    let note = [48, 52, 55, 59];
-    for (i, step) in steps.iter_mut().step_by(8).enumerate() {
-        step.note = Some(note[i % 4]);
-    }
-
-    let track = Track::Midi { steps };
-
-    // cmds.spawn((TrackID(0), Track::default()));
     cmds.spawn((
         TrackID {
             id: 0,
             playing: true,
         },
-        track,
+        // track,
+        Track::default(),
     ));
-    // cmds.spawn((TrackID(1), Track::default()));
     cmds.spawn((
         TrackID {
             id: 1,
@@ -166,7 +177,7 @@ fn setup_track_dis(mut cmds: Commands) {
             // line number
             cmds.spawn((
                 TextComponent {
-                    text: format!("{: >2}", i + 1),
+                    text: format!("{: >2}", i),
                     point: Point::new(x_offset as i32, y_offset),
                     ..default()
                 },
@@ -275,6 +286,7 @@ fn setup_track_dis(mut cmds: Commands) {
 fn display_tracks(
     text_comps: Query<(&mut TextComponent, &CellMarker)>,
     tracks: Query<(&Track, &TrackID)>,
+    display_start: Res<DisplayStart>,
 ) {
     let mut tracks: Vec<(&Track, &TrackID)> = tracks.into_iter().collect();
     tracks.sort_by_key(|(_track, id): &(&Track, &TrackID)| id.id);
@@ -284,7 +296,7 @@ fn display_tracks(
         // track.
         match track {
             Track::Midi { steps } => {
-                let step = steps[cell.row as usize].clone();
+                let step = steps[(cell.row as usize + display_start.0) % N_STEPS].clone();
                 text.set_text(
                     [
                         step.note
@@ -301,36 +313,55 @@ fn display_tracks(
     }
 }
 
+fn display_line_nums(
+    text_comps: Query<(&mut TextComponent, &LineNumMarker)>,
+    display_start: Res<DisplayStart>,
+) {
+    for (mut text, marker) in text_comps {
+        text.set_text(format!(
+            "{: >2}",
+            (marker.row as usize + display_start.0) % N_STEPS
+        ));
+    }
+}
+
 fn shift_pressed(keys: Res<KeyPresses>) -> bool {
     keys.is_pressed(KEY_MOD_SHL) || keys.is_pressed(KEY_MOD_SHR)
 }
 
-fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
+fn move_cursor(
+    keys: Res<KeyPresses>,
+    mut location: ResMut<CursorLocation>,
+    mut display_start: ResMut<DisplayStart>,
+) {
     let CursorLocation(x, y) = *location;
 
-    if keys.just_pressed(KEY_UP)
+    if (keys.just_pressed(KEY_UP) || keys.is_pressed(KEY_UP))
         && !keys.is_pressed(KEY_DOWN)
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
         // TODO: Shift view up if view is not at the top
         if y == 0 {
-            location.1 = CHAR_H - 4;
+            // location.1 = CHAR_H - 4;
+            display_start.0 = ((display_start.0 as i16 - 1) % N_STEPS as i16) as usize;
         } else {
             location.1 -= 1;
         };
-    } else if keys.just_pressed(KEY_DOWN)
+    } else if (keys.just_pressed(KEY_DOWN) || keys.is_pressed(KEY_DOWN))
         && !keys.is_pressed(KEY_UP)
         && !keys.is_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_RIGHT)
     {
         // TODO: Shift view down if view is not at the top
-        if y == CHAR_H - 4 {
-            location.1 = 0;
+        if y == CHAR_H - 5 {
+            // location.1 = 0;
+            display_start.0 += 1;
+            display_start.0 %= N_STEPS;
         } else {
             location.1 += 1;
             location.1 %= CHAR_H - 4;
-        };
+        }
     } else if keys.just_pressed(KEY_LEFT)
         && !keys.is_pressed(KEY_UP)
         && !keys.is_pressed(KEY_DOWN)
@@ -354,39 +385,94 @@ fn move_cursor(keys: Res<KeyPresses>, mut location: ResMut<CursorLocation>) {
     }
 }
 
-/// alters the selected cell
-fn edit_cell(
+fn note_selected(location: Res<CursorLocation>) -> bool {
+    let CursorLocation(x, _) = *location;
+    x % 3 == 0
+}
+
+fn edit_cmd(
     keys: Res<KeyPresses>,
-    mut location: ResMut<CursorLocation>,
-    tracks: Query<(&Track, &TrackID)>,
+    location: Res<CursorLocation>,
+    mut tracks: Query<(&mut Track, &TrackID)>,
+) {
+}
+
+fn delete_note(
+    keys: Res<KeyPresses>,
+    location: Res<CursorLocation>,
+    mut tracks: Query<(&mut Track, &TrackID)>,
+    display_start: Res<DisplayStart>,
 ) {
     let CursorLocation(x, y) = *location;
+    let y = (y + display_start.0) % N_STEPS;
 
-    if keys.just_pressed(KEY_UP)
-        && !keys.is_pressed(KEY_DOWN)
-        && !keys.is_pressed(KEY_LEFT)
-        && !keys.is_pressed(KEY_RIGHT)
-    {
+    if keys.just_pressed(KEY_BACKSPACE) || keys.just_pressed(KEY_DEL) {
+        for (mut track, id) in tracks.iter_mut() {
+            if id.id == (x / 3) {
+                match *track {
+                    Track::Midi { ref mut steps } => steps[y].note = None,
+                    Track::SF2 { ref mut steps } => steps[y].note = None,
+                }
+            }
+        }
+    }
+}
+
+/// alters the selected note
+fn edit_note(
+    keys: Res<KeyPresses>,
+    location: Res<CursorLocation>,
+    mut tracks: Query<(&mut Track, &TrackID)>,
+    display_start: Res<DisplayStart>,
+    // mut log: EventWriter<Log>,
+) {
+    let CursorLocation(x, y) = *location;
+    let y = (y + display_start.0) % N_STEPS;
+
+    let by = if keys.is_pressed(KEY_UP) || keys.just_pressed(KEY_UP) {
         // little up
-    } else if keys.just_pressed(KEY_DOWN)
-        && !keys.is_pressed(KEY_UP)
-        && !keys.is_pressed(KEY_LEFT)
-        && !keys.is_pressed(KEY_RIGHT)
-    {
+        1
+    } else if keys.is_pressed(KEY_DOWN) || keys.just_pressed(KEY_DOWN) {
         // little down
-    } else if keys.just_pressed(KEY_LEFT)
-        && !keys.is_pressed(KEY_UP)
-        && !keys.is_pressed(KEY_DOWN)
-        && !keys.is_pressed(KEY_RIGHT)
-    {
+        -1
+    } else if keys.just_pressed(KEY_LEFT) {
         // big down
-    } else if keys.just_pressed(KEY_RIGHT)
-        && !keys.is_pressed(KEY_UP)
-        && !keys.is_pressed(KEY_DOWN)
-        && !keys.is_pressed(KEY_LEFT)
-    {
-
+        -12
+    } else if keys.just_pressed(KEY_RIGHT) {
         // big up
+        12
+    } else {
+        return;
+    };
+
+    // log.write(Log::info("EDIT NOTE-2"));
+
+    for (mut track, id) in tracks.iter_mut() {
+        if id.id != (x / 3) {
+            continue;
+        }
+
+        if let Some(note) = match *track {
+            Track::Midi { ref mut steps } => &mut steps[y].note,
+            Track::SF2 { ref mut steps } => &mut steps[y].note,
+        } {
+            *note = ((*note as i16 + by) % 128) as u8;
+        } else if by < 0 {
+            match *track {
+                Track::Midi { ref mut steps } => steps[y].note = Some(127 - by.abs() as u8),
+                Track::SF2 { ref mut steps } => steps[y].note = Some(127 - by.abs() as u8),
+            }
+        } else if by > 0 {
+            match *track {
+                Track::Midi { ref mut steps } => steps[y].note = Some(by.abs() as u8 - 1),
+                Track::SF2 { ref mut steps } => steps[y].note = Some(by.abs() as u8 - 1),
+            }
+        } else if by == 0 {
+            match *track {
+                Track::Midi { ref mut steps } => steps[y].note = None,
+                Track::SF2 { ref mut steps } => steps[y].note = None,
+            }
+        }
     }
 }
 
@@ -406,6 +492,10 @@ fn display_cursor(
 }
 
 fn enter_pressed(keys: Res<KeyPresses>) -> bool {
+    keys.is_pressed(KEY_ENTER)
+}
+
+fn enter_just__pressed(keys: Res<KeyPresses>) -> bool {
     keys.just_pressed(KEY_ENTER)
 }
 
@@ -530,8 +620,8 @@ fn render(
             let mut style = style;
             // style.text_color = Some(Rgb565::BLACK);
             // TODO: make the text_color "None" and see if it still clears.
-            // style.text_color = Some(text.bg_color.unwrap_or(Rgb565::BLACK));
-            style.text_color = None;
+            style.text_color = Some(text.bg_color.unwrap_or(Rgb565::BLACK));
+            // style.text_color = None;
             Text::new(&display_text, point, style)
                 .draw(display)
                 .unwrap();

@@ -1,19 +1,10 @@
 use crate::{
-    base_plugin::MidiEnv, hal::timer::Instant, playing, Playing, Tempo, Track, TrackID, N_STEPS,
+    N_STEPS, Playing, Tempo, Track, TrackID, base_plugin::MidiEnv, hal::timer::Instant, playing,
 };
 use bevy::prelude::*;
 use core::time::Duration;
 use defmt::*;
 use picocalc_bevy::{LoggingEnv as Log, PicoTimer};
-// use bevy_midi::{
-//     MidiMessage,
-//     output::{MidiOutput, MidiOutputConnection},
-// };
-// use midi_msg::{MidiMsg, SystemRealTimeMsg};
-// use std::{
-//     time::{Duration, Instant},
-//     usize,
-// };
 
 #[derive(Resource, Clone, Debug, Copy, Eq, PartialEq)]
 pub struct SyncPulse {
