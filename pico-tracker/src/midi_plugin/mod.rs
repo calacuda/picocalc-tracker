@@ -63,7 +63,7 @@ impl Plugin for MidiOutPlugin {
             Update,
             (
                 send_notes.run_if(playing),
-                note_notif.run_if(playing),
+                // note_notif.run_if(playing),
                 // update_front_end.run_if(sync_pulsing)
             )
                 // .chain()
@@ -152,7 +152,7 @@ fn sync(
 
         pulse.n_pulses += 1;
         pulse.n_pulses %= usize::MAX;
-        log.write(Log::info("pulse"));
+        // log.write(Log::info("pulse"));
 
         // set last sync pulse time
 
@@ -213,14 +213,18 @@ fn send_notes(
         if id.playing {
             match track {
                 Track::Midi { steps } => {
+                    // log.write(Log::error(format!(
+                    //     "step: {step_i}, last step: {last_step_i}"
+                    // )));
+
                     if let Some(Some(note)) = steps.get(last_step_i).map(|step| step.note) {
                         midi_out.write(MidiEnv::Off { note });
-                        log.write(Log::error(format!("stopping: {note}")));
+                        // log.write(Log::error(format!("stopping: {note}")));
                     }
 
                     if let Some(Some(note)) = steps.get(step_i).map(|step| step.note) {
-                        log.write(Log::error(format!("playing: {note}")));
                         midi_out.write(MidiEnv::On { note, vel: 111 });
+                        // log.write(Log::error(format!("playing: {note}")));
                     }
                 }
                 Track::SF2 { steps: _ } => {

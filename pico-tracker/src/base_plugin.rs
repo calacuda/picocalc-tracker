@@ -183,7 +183,7 @@ impl Plugin for BasePlugin {
             // serial.write(b"starting bevy\n").unwrap();
 
             // Create a MIDI class with 1 input and 1 output jack.
-            let mut midi = UsbMidiClass::new(&usb_bus, 1, 5).unwrap();
+            let mut midi = UsbMidiClass::new(&usb_bus, 1, 1).unwrap();
 
             let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x5e4))
                 .device_class(0)
@@ -225,14 +225,19 @@ impl Plugin for BasePlugin {
                             events.send(message);
                         }
                     } else {
-                        let _ = ron::to_string(&FromTracker::Log {
-                            message: format!("failed to read to ron: {raw_ron_msg}"),
-                        })
-                        .map(|msg| ser_write(&mut serial, msg));
+                        // let _ = ron::to_string(&FromTracker::Log {
+                        //     message: format!("failed to read to ron: {raw_ron_msg}"),
+                        // })
+                        // .map(|msg| ser_write(&mut serial, msg));
                     }
                 };
 
+                let mut buf = [0u8; 64];
+                _ = midi.read(&mut buf);
+
+                let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
                 app.update();
+                let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
 
                 {
                     let world = app.world_mut();
@@ -249,10 +254,10 @@ impl Plugin for BasePlugin {
 
                         events.update();
                     }
-                }
-
-                {
-                    let world = app.world_mut();
+                    // }
+                    //
+                    // {
+                    //     let world = app.world_mut();
                     if let Some(ref mut events) = world.get_resource_mut::<Events<FromTracker>>() {
                         for event in events.iter_current_update_events() {
                             // let _ = serial.write(&[0]);
@@ -263,11 +268,29 @@ impl Plugin for BasePlugin {
 
                         events.update();
                     }
-                }
-
-                {
-                    let world = app.world_mut();
+                    // }
+                    //
+                    // {
+                    //     let world = app.world_mut();
                     if let Some(ref mut events) = world.get_resource_mut::<Events<MidiEnv>>() {
+                        // let cables = [
+                        //     CableNumber::Cable0,
+                        //     CableNumber::Cable1,
+                        //     CableNumber::Cable2,
+                        //     CableNumber::Cable3,
+                        //     CableNumber::Cable4,
+                        //     CableNumber::Cable5,
+                        //     CableNumber::Cable6,
+                        //     CableNumber::Cable7,
+                        //     CableNumber::Cable8,
+                        //     CableNumber::Cable9,
+                        //     CableNumber::Cable10,
+                        //     CableNumber::Cable11,
+                        //     CableNumber::Cable12,
+                        //     CableNumber::Cable13,
+                        //     CableNumber::Cable14,
+                        //     CableNumber::Cable15,
+                        // ];
                         for event in events.iter_current_update_events() {
                             let packet = match *event {
                                 MidiEnv::On { note, vel } => Message::NoteOn(
@@ -282,7 +305,15 @@ impl Plugin for BasePlugin {
                                 ),
                             };
 
-                            let _ = midi.send_packet(packet.into_packet(CableNumber::Cable0));
+                            usb_dev.poll(&mut [&mut midi, &mut serial]);
+
+                            if let Err(e) =
+                                midi.send_packet(packet.clone().into_packet(CableNumber::Cable0))
+                            {
+                                _ = ser_write(&mut serial, format!("{e:?}"));
+                            }
+
+                            // let _ = usb_dev.poll(&mut [&mut midi]);
                         }
 
                         events.update();
