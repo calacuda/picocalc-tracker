@@ -168,8 +168,9 @@ impl Plugin for BasePlugin {
                 true,
                 &mut pac.RESETS,
             ));
+
             let mut serial = SerialPort::new(&usb_bus);
-            //
+
             // let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
             //     .strings(&[StringDescriptors::default()
             //         .manufacturer("calacuda")
@@ -235,9 +236,9 @@ impl Plugin for BasePlugin {
                 let mut buf = [0u8; 64];
                 _ = midi.read(&mut buf);
 
-                let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
+                // let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
                 app.update();
-                let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
+                // let _ = usb_dev.poll(&mut [&mut midi, &mut serial]);
 
                 {
                     let world = app.world_mut();
@@ -263,6 +264,7 @@ impl Plugin for BasePlugin {
                             // let _ = serial.write(&[0]);
                             // let _ = serial.write(&event.msg.clone().into_bytes());
                             // let _ = serial.write(&['\n' as u8, '\r' as u8]);
+
                             let _ = ron::to_string(event).map(|msg| ser_write(&mut serial, msg));
                         }
 
@@ -305,13 +307,15 @@ impl Plugin for BasePlugin {
                                 ),
                             };
 
-                            usb_dev.poll(&mut [&mut midi, &mut serial]);
+                            // usb_dev.poll(&mut [&mut midi, &mut serial]);
 
                             if let Err(e) =
                                 midi.send_packet(packet.clone().into_packet(CableNumber::Cable0))
                             {
                                 _ = ser_write(&mut serial, format!("{e:?}"));
                             }
+
+                            // usb_dev.poll(&mut [&mut midi, &mut serial]);
 
                             // let _ = usb_dev.poll(&mut [&mut midi]);
                         }
