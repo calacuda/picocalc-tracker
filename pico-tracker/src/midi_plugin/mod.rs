@@ -62,7 +62,7 @@ impl Plugin for MidiOutPlugin {
         .add_systems(
             Update,
             (
-                send_notes.run_if(playing),
+                send_notes.run_if(playing).run_if(not_played_yet),
                 // note_notif.run_if(playing),
                 // update_front_end.run_if(sync_pulsing)
             )

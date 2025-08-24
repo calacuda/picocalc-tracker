@@ -4,12 +4,13 @@
 extern crate alloc;
 
 use cortex_m_semihosting::debug;
+use fugit::HertzU32;
 
 // use defmt_rtt as _; // global logger
 
 use crate::helpers::less_then::UsizeLessThan;
 use bevy::prelude::*;
-use core::{fmt::Display, ops::Index};
+use core::fmt::Display;
 use strum_macros::{Display, EnumString};
 
 use panic_probe as _;
@@ -23,8 +24,22 @@ pub mod base_plugin;
 pub mod embedded;
 pub mod helpers;
 pub mod midi_plugin;
+pub mod pll_settings;
+pub mod vreg;
 
 pub type MidiNote = u8;
+
+/// External high-speed crystal on the pico board is 12Mhz
+const EXTERNAL_XTAL_FREQ_HZ: HertzU32 = HertzU32::from_raw(12_000_000u32);
+
+/// RP2040の動作周波数
+// const RP2040_CLOCK_HZ: HertzU32 = HertzU32::from_raw(307_200_000u32);
+const CPU_CLOCK_HZ: HertzU32 = HertzU32::from_raw(230_400_000u32);
+// const RP2040_CLOCK_HZ: HertzU32 = HertzU32::from_raw(150_000_000u32);
+// const RP2040_CLOCK_HZ: HertzU32 = HertzU32::from_raw(384_000_000u32);
+
+/// PCMのサンプリング周波数
+const SAMPLE_RATE: HertzU32 = HertzU32::from_raw(48_000u32);
 
 pub const SCREEN_W: usize = 320;
 pub const SCREEN_H: usize = 320;

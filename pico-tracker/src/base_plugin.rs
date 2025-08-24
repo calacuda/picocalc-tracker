@@ -1,10 +1,16 @@
-use crate::hal::{
-    self, Sio,
-    clocks::{Clock, init_clocks_and_plls},
-    gpio::{FunctionI2C, Pin, PullUp},
-    pac,
-    powman::Powman,
-    watchdog::Watchdog,
+use crate::{
+    EXTERNAL_XTAL_FREQ_HZ,
+    hal::{
+        self, Sio,
+        clocks::{Clock, ClockSource, ClocksManager, InitError, init_clocks_and_plls},
+        gpio::{FunctionI2C, Pin, PullUp},
+        pac,
+        pll::setup_pll_blocking,
+        powman::Powman,
+        watchdog::Watchdog,
+    },
+    pll_settings::*,
+    vreg::{VregVoltage, vreg_set_voltage},
 };
 use bevy::prelude::*;
 use display_interface_spi::SPIInterface;
@@ -16,10 +22,11 @@ use pico_tracker_types::ron;
 use pico_tracker_types::{FromHost, FromTracker};
 use picocalc_bevy::{
     Display, DummyTimesource, FileSystemStruct, Keeb, KeyPresses, LoggingEnv, PicoTimer,
-    XTAL_FREQ_HZ, clear_display, get_key_report,
+    clear_display, get_key_report,
     screen::{Command, Commands, ILI9486, color::PixelFormat, io::shim::OutputOnlyIoPin},
     start_timer, tick_timer,
 };
+use rp235x_hal::{pll::common_configs::PLL_USB_48MHZ, xosc::setup_xosc_blocking};
 use usb_device::{
     bus::UsbBusAllocator,
     device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid},
@@ -35,20 +42,117 @@ pub struct BasePlugin;
 impl Plugin for BasePlugin {
     fn build(&self, app: &mut App) {
         let mut pac = pac::Peripherals::take().unwrap();
-        let mut watchdog = Watchdog::new(pac.WATCHDOG);
-        let sio = Sio::new(pac.SIO);
+        //=============================VREG===============================
+        // Core電圧(vreg)を1.25Vに設定
+        vreg_set_voltage(&mut pac.POWMAN, VregVoltage::Voltage1_25);
 
-        let clocks = init_clocks_and_plls(
-            XTAL_FREQ_HZ,
-            pac.XOSC,
-            pac.CLOCKS,
-            pac.PLL_SYS,
-            pac.PLL_USB,
-            &mut pac.RESETS,
-            &mut watchdog,
-        )
-        .ok()
-        .unwrap();
+        let mut watchdog = Watchdog::new(pac.WATCHDOG);
+        //=============================CLOCK===============================
+        // Enable the xosc
+        let xosc = setup_xosc_blocking(pac.XOSC, EXTERNAL_XTAL_FREQ_HZ)
+            .map_err(InitError::XoscErr)
+            .ok()
+            .unwrap();
+
+        // Start tick in watchdog
+        watchdog.enable_tick_generation((EXTERNAL_XTAL_FREQ_HZ.raw() / 1_000_000) as u16);
+
+        let mut clocks = ClocksManager::new(pac.CLOCKS);
+
+        // let clocks = init_clocks_and_plls(
+        //     XTAL_FREQ_HZ,
+        //     pac.XOSC,
+        //     pac.CLOCKS,
+        //     pac.PLL_SYS,
+        //     pac.PLL_USB,
+        //     &mut pac.RESETS,
+        //     &mut watchdog,
+        // )
+        // .ok()
+        // .unwrap();
+        // Configure PLL and clocks
+        {
+            // Configure PLLs
+            //                   REF     FBDIV VCO            POSTDIV
+            // PLL SYS: 12 / 1 = 12MHz * 125 = 1500MHZ / 6 / 2 = 125MHz
+            // PLL USB: 12 / 1 = 12MHz * 40  = 480 MHz / 5 / 2 =  48MHz
+            let pll_sys = setup_pll_blocking(
+                pac.PLL_SYS,
+                xosc.operating_frequency(),
+                // rp2040_pll_settings_for_48khz_audio::SYS_PLL_CONFIG_307P2MHZ,
+                SYS_PLL_CONFIG_230P4MHZ,
+                // SYS_PLL_CONFIG_384MHZ,
+                // SYS_PLL_CONFIG_307P2MHZ,
+                &mut clocks,
+                &mut pac.RESETS,
+            )
+            .map_err(InitError::PllError)
+            .ok()
+            .unwrap();
+
+            let pll_usb = setup_pll_blocking(
+                pac.PLL_USB,
+                xosc.operating_frequency(),
+                PLL_USB_48MHZ,
+                &mut clocks,
+                &mut pac.RESETS,
+            )
+            .map_err(InitError::PllError)
+            .ok()
+            .unwrap();
+
+            // Configure clocks
+            // CLK_REF = XOSC (12MHz) / 1 = 12MHz
+            clocks
+                .reference_clock
+                .configure_clock(&xosc, xosc.get_freq())
+                .map_err(InitError::ClockError)
+                .ok()
+                .unwrap();
+
+            // CLK SYS = PLL SYS (125MHz) / 1 = 125MHz
+            clocks
+                .system_clock
+                .configure_clock(&pll_sys, pll_sys.get_freq())
+                .map_err(InitError::ClockError)
+                .ok()
+                .unwrap();
+
+            // CLK USB = PLL USB (48MHz) / 1 = 48MHz
+            clocks
+                .usb_clock
+                .configure_clock(&pll_usb, pll_usb.get_freq())
+                .map_err(InitError::ClockError)
+                .ok()
+                .unwrap();
+
+            // CLK ADC = PLL USB (48MHZ) / 1 = 48MHz
+            clocks
+                .adc_clock
+                .configure_clock(&pll_usb, pll_usb.get_freq())
+                .map_err(InitError::ClockError)
+                .ok()
+                .unwrap();
+
+            // // CLK RTC = PLL USB (48MHz) / 1024 = 46875Hz
+            // clocks
+            //     .rtc_clock
+            //     .configure_clock(&pll_usb, HertzU32::from_raw(46875u32))
+            //     .map_err(InitError::ClockError)
+            //     .ok()
+            //     .unwrap();
+
+            // CLK PERI = clk_sys. Used as reference clock for Peripherals. No dividers so just select and enable
+            // Normally choose clk_sys or clk_usb
+            clocks
+                .peripheral_clock
+                .configure_clock(&clocks.system_clock, clocks.system_clock.freq())
+                .map_err(InitError::ClockError)
+                .ok()
+                .unwrap();
+        }
+
+        let sio = Sio::new(pac.SIO);
 
         let mut timer = hal::Timer::new_timer0(pac.TIMER0, &mut pac.RESETS, &clocks);
 
@@ -79,7 +183,8 @@ impl Plugin for BasePlugin {
         let spi = spi_bus.init(
             &mut pac.RESETS,
             clocks.peripheral_clock.freq(),
-            200_000_000u32.Hz(),
+            // 200_000_000u32.Hz(),
+            40_000_000u32.Hz(),
             MODE_3,
         );
 

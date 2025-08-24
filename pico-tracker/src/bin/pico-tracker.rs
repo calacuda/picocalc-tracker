@@ -135,7 +135,7 @@ fn setup_tracks(mut cmds: Commands) {
     cmds.spawn((
         TrackID {
             id: 1,
-            playing: false,
+            playing: true,
         },
         Track::default(),
     ));
